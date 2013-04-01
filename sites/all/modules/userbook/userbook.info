@@ -1,0 +1,6 @@
+name = Userbook
+description = Вывод списка сотрудников
+core = 7.x
+
+stylesheets[all][] = userbook.css
+scripts[] = userbook.js

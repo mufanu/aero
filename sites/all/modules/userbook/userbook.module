@@ -1,0 +1,514 @@
+<?php
+
+/*
+ * Модуль выводит структуру сотрудников
+ */
+
+/*
+ * Imlements hook_user_menu().
+ */
+function userbook_menu() {
+	// Основная страница справочника сотрудников
+	$items['userbook'] = array(
+		'title' => t('Справочник сотрудников'),
+		'page callback' => 'userbook_get_deps',
+		'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+		);
+	// Вспомогательная страница, загружает дочерние подразделения через ajax
+	$items['userbook/get_children'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_get_children',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	// Вспомогательные страницы autocomplete
+	$items['userbook/autocomplete/fullname'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_fullname',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/office'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_office',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/department'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_department',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/position'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_position',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/phone'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_phone',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/mobile'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_mobile',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+	$items['userbook/autocomplete/mail'] = array(
+		// Функция, которая будет "обрабатывать" путь
+    'page callback' => 'userbook_autocomplete_mail',
+    // Права на доступ к пути
+    'access arguments' => array('access content'),
+    // Элемент не будет отображаться в меню сайта
+    'type' => MENU_CALLBACK,
+	);
+		
+	return $items;
+}
+
+/*
+ * Форма поиска
+ */
+function userbook_search_form($form, &$form_state) {
+	/*
+	 * Стандартный поиск по ФИО
+	 */
+  $form['standard'] = array(
+    '#prefix' => '<div id="standard-search" class="clearfix">',
+    '#suffix' => '</div>',
+  );
+	$form['standard']['second-col'] = array(
+    '#prefix' => '<div class="second-col">',
+    '#suffix' => '</div>',
+  );
+  $form['standard']['first-col'] = array(
+    '#prefix' => '<div class="first-col">',
+    '#suffix' => '</div>',
+  );
+	// ФИО
+  $form['standard']['first-col']['fullname'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('ФИО'),
+    '#size' => 100,
+		'#autocomplete_path' => 'userbook/autocomplete/fullname',
+  );
+  // Кнопка поиск
+  $form['standard']['second-col']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search'),
+		'#ajax' => array(
+      'callback' => 'userbook_search_result',
+      'wrapper' => 'departments-hierarchy',
+      'method' => 'html',
+			//'event' => 'blur',
+			//'keypress' => TRUE,
+			'progress' => array(
+				'type' => 'none',
+			),
+    ),
+  );
+  // Кнопка очисить
+  $form['standard']['second-col']['clear'] = array(
+    '#type' => 'button',
+    '#value' => 'Очистить',
+    '#validate' => array('userbook_search_form_clear'),
+	);
+	/*
+	 * Расширенный поиск
+	 */
+	$form['extended']['second-col'] = array(
+    '#prefix' => '<div class="second-col">',
+    '#suffix' => '</div>',
+  );
+  $form['extended']['first-col'] = array(
+    '#prefix' => '<div class="first-col">',
+    '#suffix' => '</div>',
+  );
+	// Офис
+  $form['extended']['first-col']['office'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('Офис'),
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/office',
+  );
+	// Отдел
+  $form['extended']['first-col']['department'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('Отдел'),
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/department'
+  );
+	// Должность
+  $form['extended']['first-col']['position'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('Должность'),
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/position'
+  );
+	// Телефон
+  $form['extended']['second-col']['phone'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('Телефон'),
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/phone'
+  );
+	// Мобильный
+  $form['extended']['second-col']['mobile'] = array(
+  	'#type' => 'textfield',
+  	'#title' => t('Мобильный'),
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/mobile'
+  );
+	// e-mail
+  $form['extended']['second-col']['mail'] = array(
+  	'#type' => 'textfield',
+  	'#title' => 'E-mail',
+    '#size' => 40,
+		'#autocomplete_path' => 'userbook/autocomplete/mail'
+  );
+		
+	$fieldsets = array('extended');
+	
+	$form['extended-spoiler'] = array(
+        '#type' => 'fieldset',
+        '#title' => 'Расширенный поиск',
+        '#collapsible' => true,
+        '#collapsed' => true,
+        '#weight' => 4,
+    );
+		
+		foreach ($fieldsets as $name) {
+			$form['extended-spoiler'][$name] = $form[$name];
+			unset($form[$name]);
+    }
+
+  return $form;
+}
+
+/*
+ * Очищаем поиск
+ */
+function userbook_search_form_clear($form, &$form_state) {
+}
+
+/*
+ * Imlements page callback userbook_get_deps().
+ * Вывод информации на главной странице справочника сотрудников.
+ */
+function userbook_get_deps() {
+	// Словарь, где хранятся департаменты
+	$vid = 1;
+	$parent = 0;
+	// В начале выводим до только до второго уровня, остальные подружаются ajax'ом.
+	$max_depth = 2;
+	// Оборачиваем в div с id=departments.
+	$output = '<div id="departments">' . render(drupal_get_form('userbook_search_form'));
+;
+	$tree = taxonomy_get_tree($vid, $parent, $max_depth);
+	
+	foreach ($tree as $item) {
+		if ($item->depth == 0) {
+			$title = $item->name;
+			// Получаем пользователей данного департамента (термина).
+			$items[] = views_embed_view('users','user_in_structure', $item->tid);
+		} else {
+			$items[] = array(
+				'data' => l($item->name, 'taxonomy/term/' . $item->tid, array('attributes' => array('class' => 'collapsed'))),
+			);
+		}
+	}
+	// Атрибуты для списка, нам пока они не нужны. Поэтому указываем пустой массив.
+	$type = "ul";
+	$attributes = array(
+		'id' => 'departments-hierarchy'
+	);
+	
+	$output = $output . theme_item_list(array(
+		'items' => $items,
+		'title' => $title,
+		'type' => $type,
+		'attributes' => $attributes
+		// Закрываем тег div id=departments.
+		)) . '</div>';
+	
+	return ($output);
+}
+
+/*
+ * Imlements page callback userbook_get_children().
+ * Страница получает дочерние подразделения и сотружников.
+ */
+
+function userbook_get_children() {
+	/*
+	 * Здесь обрезаем переданное значение.
+	 * Если включены чистые ссылки, то ставим - 1
+	 * Если не включены - 4
+	 * В будущем здесь нужно написать проверку переданного значения регулярными выражениями
+	 */
+	$url = substr($_GET['url'], 4);
+	// Получаем нормлаьный путь
+	$sys_url = drupal_get_normal_path($url);
+	// Разбиваем адрес на массив
+	$sys_url_array = explode('/',$sys_url);
+	// Получаем tid таксономии
+	$tid = $sys_url_array['2'];
+	//$tid = 15;
+	// Получаем пользователей данной группы
+	$output = views_embed_view('users','user_in_structure', $tid);
+	
+	// Получаем список дочерних терминов
+	$childs = taxonomy_get_children($tid);
+	// Если есть дочерние группы
+	if ($childs) {	
+		foreach ($childs as $child) {
+			$items[] = l($child->name, 'taxonomy/term/' . $child->tid, array('attributes' => array('class' => 'collapsed')));
+		}
+		
+		// Атрибуты для списка, нам пока они не нужны. Поэтому указываем пустой массив.
+		$type = "ul";
+		$attributes = array();
+		
+		$output = $output . theme_item_list(array(
+			'items' => $items,
+			// Заголовок списка не печатаем.
+			'title' => null,
+			'type' => $type,
+			'attributes' => $attributes
+			));
+	} 
+	
+	if(empty($output)) {
+		$output = '<div>Ничего не найдено</div>';
+	}
+	
+
+	// Наш ответ клиенту
+	drupal_json_output(array('status' => 1, 'data' => $output));
+}
+
+/*
+ * Autocompletes
+ */
+// Fullname
+function userbook_autocomplete_fullname($string) {
+  // для примера, возвратим заголовки нод
+	$query = db_select('field_data_field_user_position', 'up');
+	$query->join('field_data_field_user_full_name', 'ufn', 'up.entity_id = ufn.entity_id');
+	$query->fields('up', array('field_user_position_value'));
+	$query->fields('ufn', array('field_user_full_name_value'));
+	$query->condition('ufn.field_user_full_name_value', '%' . db_like($string) . '%', 'LIKE');
+	$query->range(0, 20);
+	$result = $query->execute()->fetchAll();
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_full_name_value] = check_plain($row->field_user_full_name_value) . '<span style="color: #999">&nbsp;|&nbsp;' . check_plain($row->field_user_position_value) . '</span>';
+  }
+ 
+  drupal_json_output($matches);
+}
+// Office
+function userbook_autocomplete_office($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('field_data_field_user_office', 'f')
+		->fields('f')
+		->condition('f.field_user_office_value', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_office_value] = check_plain($row->field_user_office_value);
+  }
+ 
+  drupal_json_output($matches);
+}
+// Department
+function userbook_autocomplete_department($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('og', 'f')
+		->fields('f')
+		->condition('f.label', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->label] = check_plain($row->label);
+  }
+ 
+  drupal_json_output($matches);
+}
+
+// Position
+function userbook_autocomplete_position($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('field_data_field_user_position', 'f')
+		->fields('f')
+		->condition('f.field_user_position_value', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_position_value] = check_plain($row->field_user_position_value);
+  }
+ 
+  drupal_json_output($matches);
+}
+// Phone
+function userbook_autocomplete_phone($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('field_data_field_user_phone', 'f')
+		->fields('f')
+		->condition('f.field_user_phone_value', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_phone_value] = check_plain($row->field_user_phone_value);
+  }
+ 
+  drupal_json_output($matches);
+}
+// Mobile
+function userbook_autocomplete_mobile($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('field_data_field_user_mobile', 'f')
+		->fields('f')
+		->condition('f.field_user_mobile_value', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_mobile_value] = check_plain($row->field_user_mobile_value);
+  }
+ 
+  drupal_json_output($matches);
+}
+// Mail
+function userbook_autocomplete_mail($string) {
+  // для примера, возвратим заголовки нод
+  $result = db_select('users', 'f')
+		->fields('f')
+		->condition('f.mail', '%' . db_like($string) . '%', 'LIKE')
+		->range(0, 10)
+		->execute();
+ 
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->mail] = check_plain($row->mail);
+  }
+ 
+  drupal_json_output($matches);
+}
+
+/*
+ * Search
+ */
+function userbook_search_result($form, $form_state) {
+	$fullname = $form_state['values']['fullname'];
+	$office = $form_state['values']['office'];
+	$department = $form_state['values']['department'];
+	$position = $form_state['values']['position'];
+	$phone = $form_state['values']['phone'];
+	$mobile = $form_state['values']['mobile'];
+	$mail = $form_state['values']['mail'];
+	
+	if(!empty($fullname) || !empty($office) || !empty($department) || !empty($position) || !empty($phone) || !empty($mobile) || !empty($mail)) {
+		// Ищем совпадения по фамилии
+		// Получаем tids
+		$query = db_select('og', 'o');
+		$query->join('og_membership', 'm', 'o.gid=m.gid');
+		if (!empty($fullname)) {
+			$query->join('field_data_field_user_full_name', 'ufn', 'm.etid = ufn.entity_id');
+		}
+		if (!empty($office)) {
+			$query->join('field_data_field_user_office', 'uo', 'm.etid = uo.entity_id');
+		}
+		if (!empty($position)) {
+			$query->join('field_data_field_user_position', 'up', 'm.etid = up.entity_id');
+		}
+		if (!empty($phone)) {
+			$query->join('field_data_field_user_phone', 'uph', 'm.etid = uph.entity_id');
+		}
+		if (!empty($mobile)) {
+			$query->join('field_data_field_user_mobile', 'uph', 'm.etid = um.entity_id');
+		}
+		if (!empty($mail)) {
+			$query->join('users', 'u', 'm.etid = u.uid');
+		}
+		$db_and = db_and();
+		if (!empty($fullname)) {
+			$db_and->condition('ufn.field_user_full_name_value', '%' . db_like($fullname) . '%', 'LIKE');
+		}
+		if (!empty($office)) {
+			$db_and->condition('uo.field_user_office_value', '%' . db_like($office) . '%', 'LIKE');
+		}
+		if (!empty($department)) {
+			$db_and->condition('o.label', '%' . db_like($department) . '%', 'LIKE');
+		}
+		if (!empty($position)) {
+			$db_and->condition('up.field_user_position_value', '%' . db_like($position) . '%', 'LIKE');
+		}
+		if (!empty($phone)) {
+			$db_and->condition('uph.field_user_phone_value', '%' . db_like($phone) . '%', 'LIKE');
+		}
+		if (!empty($mobile)) {
+			$db_and->condition('um.field_user_mobile_value', '%' . db_like($mobile) . '%', 'LIKE');
+		}
+		if (!empty($mail)) {
+			$db_and->condition('u.mail', '%' . db_like($mail) . '%', 'LIKE');
+		}
+		$query->condition($db_and);
+		$query->fields('o', array('etid'));
+		$query->fields('m', array('etid'));
+		$results = $query->execute()->fetchAll();
+			
+		foreach ($results as $key => $item) {
+			$parents[$key]['terms'] = array_reverse(taxonomy_get_parents_all($item->etid));
+			$parents[$key]['user'] = $item->m_etid;
+		}
+		
+		foreach ($parents as $item) {
+			$terms = $item['terms'];
+			$user = $item['user'];
+			foreach ($terms as $key => $term) {
+				if (!$key == 0) {
+				$output = $output . '<div class="department level-' . $key . '">' . $term->name . '</div>';
+				}
+			}
+			$output = $output . views_embed_view('users','users_by_id', $user);	
+		}
+		
+		if (empty($output)) {
+			return drupal_set_message(t('Ничего не найдено.'), 'warning');
+		} else {
+			return $output;
+		}
+		
+	} else {
+		return drupal_set_message(t('Вы не заполнили ни одно поле.'), 'error');
+	}
+}

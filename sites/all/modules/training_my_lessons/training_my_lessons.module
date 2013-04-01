@@ -1,0 +1,292 @@
+<?php
+
+function training_my_lessons_menu() {
+	$items['user/%/mylessons'] = array(
+		'title' => t('My lessons'),
+		'page callback' => 'training_my_lessons_get',
+		'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+	);
+	
+	return $items;
+}
+
+/*
+ * Получаем список уроков, на которые подписан пользователь.
+ */
+
+function training_my_lessons_get() {
+	global $user;
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	// Пустые переменные
+	$items = '';
+	$block_id = '';
+	$course_id = '';
+	// Запрос к базе данных
+	$query = db_select('flag_content', 'f');
+	$query->join('node', 'n', 'f.content_id = n.nid');
+	$query->join('taxonomy_index', 'ti', 'f.content_id = ti.nid');
+	$query->join('taxonomy_term_hierarchy', 'tth', 'ti.tid = tth.tid');
+	$query->join('taxonomy_term_data', 'ttd', 'ti.tid = ttd.tid');
+	$query->leftjoin('field_data_field_lesson', 'fdfl', 'n.nid = fdfl.field_lesson_target_id');
+	$query->condition('f.uid', $user->uid);
+	$query->condition('f.fid', $flag_signup->fid);
+	$query->addField('n', 'title', 'lesson_title');
+	$query->addField('tth', 'parent', 'block_id');
+	$query->addField('tth', 'tid', 'course_id');
+	$query->addField('n', 'nid', 'lesson_id');
+	$query->addField('fdfl', 'entity_id', 'quiz_id');
+	$query->addField('f', 'timestamp', 'signup_time');
+	$query->addField('ttd', 'name', 'course_name');
+	$results = $query->execute()->fetchAll();
+	//dpm($results);
+	
+	foreach ($results as $result) {
+		// Если id блока не равен предыдущему, то обнуляем массив с уроками
+		if(!($block_id == $result->block_id)) {
+			$courses = '';
+		}
+		if(!($course_id == $result->course_id)) {
+			$rows = '';
+		}
+		// Получаем название блока
+		$block_name = db_select('taxonomy_term_data', 'ttd')
+		->condition('ttd.tid', $result->block_id)
+		->fields('ttd', array('name'))
+		->execute()
+		->fetchField();
+		// Название курса
+		$course_name = $result->course_name;
+		// Когда подписан
+		$signup_time = '<span>' . date('d.m.Y - H:i', $result->signup_time) . '</span>';
+		// Изучил ли урок
+		$is_learned = $flag_learned->is_flagged($result->lesson_id);
+		// Если изучил, то выводим только название урока
+		if ($is_learned) {
+			$lesson_title = $result->lesson_title . '<br />';
+		// Иначе название со ссылкой на урок
+		} else {
+			$lesson_title = l($result->lesson_title, 'node/' . $result->lesson_id) . '<br />';
+		}
+		// Есть ли результат теста для данного урока
+		$quiz_result = training_get_quiz_result($user->uid, $result->quiz_id);
+		//dpm($quiz_result);
+		// Если есть результат теста
+		if ($quiz_result) {
+			// Проверяем, сдан ли данный тест
+			$is_passed_quiz = quiz_is_passed($user->uid, $quiz_result->nid, $quiz_result->vid);
+			// Если сдан тест
+			if ($is_passed_quiz) {
+				$quiz_status = '<span>Тест сдан</span>';
+			} else {
+				$quiz_status = l(t('Пройти тест'), 'node/' . $result->quiz_id);
+			}
+		// Иначе возвращаем FALSE и статус теста "Не сдан"
+		} else {
+			$is_passed_quiz = FALSE;
+			if ($is_learned) {
+				$quiz_status = l(t('Пройти тест'), 'node/' . $result->quiz_id);
+			} else {
+				$quiz_status = t('Изучите урок');
+			}
+		}
+				
+		// Названия заголовков таблицы
+		$header = array(
+			'title' => 'Название урока',
+			'signup' => 'Подписка',
+			'quiz' => 'Тестирование',	
+		);
+		
+		$rows[] = array(
+			'title' => $lesson_title,
+			'signup' => $signup_time,
+			'quiz' => $quiz_status ,
+		);
+		//dpm($rows);
+		
+		$lessons = theme('table', array(
+			'header' => $header,
+			'rows' => $rows,
+			'attributes' => array('id' => 'lessons-of-course'),
+		));
+		
+		$courses[$result->course_id] = array(
+			'data' => '<span class="course-title title">' . $course_name . '</span>',
+			'class' => array('training-course-item collapsed'),
+			'children' => array(
+				'data' => $lessons,
+			),
+		);
+		
+		$items[$result->block_id] = array(
+			'data' => '<span class="block-title title">' . $block_name . '</span>',
+			'class' => array('training-block-item collapsed'),
+			'children' => $courses,
+		);
+				
+		// ID блока
+		$block_id = $result->block_id;
+		$course_id = $result->course_id;
+	}
+	//dpm($items);
+	
+	$title = '';
+	$type = "ul";
+	$attributes = array(
+		'id' => 'training-my-lessons'
+	);
+	
+	// Если есть уроки, на которые подписан пользователь
+	if ($items) {
+		$output = theme('item_list', array(
+			'items' => $items,
+			'title' => $title,
+			'type' => $type,
+			'attributes' => $attributes,
+		));
+	} else {
+		$output = t('<p>Вы не подписаны ни на один урок.</p>');
+	}
+	
+	//dpm($items);
+	
+	return $output;
+}
+/*
+// Резервная копия
+function training_my_lessons_get_bak() {
+	global $user;
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	$items = '';
+	$block_id = '';
+	$course_id = '';
+	//dpm($flag_signup);
+	$query = db_select('flag_content', 'f');
+	$query->join('node', 'n', 'f.content_id = n.nid');
+	$query->join('taxonomy_index', 'ti', 'f.content_id = ti.nid');
+	$query->join('taxonomy_term_hierarchy', 'tth', 'ti.tid = tth.tid');
+	$query->join('taxonomy_term_data', 'ttd', 'ti.tid = ttd.tid');
+	$query->join('field_data_field_lesson', 'fdfl', 'n.nid = fdfl.field_lesson_target_id');
+	$query->condition('f.uid', $user->uid);
+	$query->condition('f.fid', $flag_signup->fid);
+	$query->addField('n', 'title', 'lesson_title');
+	$query->addField('tth', 'parent', 'block_id');
+	$query->addField('tth', 'tid', 'course_id');
+	$query->addField('n', 'nid', 'lesson_id');
+	$query->addField('fdfl', 'entity_id', 'quiz_id');
+	$query->addField('f', 'timestamp', 'signup_time');
+	$query->addField('ttd', 'name', 'course_name');
+	$results = $query->execute()->fetchAll();
+	dpm($results);
+	
+	foreach ($results as $result) {
+		// Если id блока не равен предыдущему, то обнуляем массив с уроками
+		if(!($block_id == $result->block_id)) {
+			$rows = '';
+		}
+		// Получаем название блока
+		$block_name = db_select('taxonomy_term_data', 'ttd')
+		->condition('ttd.tid', $result->block_id)
+		->fields('ttd', array('name'))
+		->execute()
+		->fetchField();
+		// Название курса
+		$course_name = $result->course_name;
+		// Когда подписан
+		$signup_time = '<span>' . date('d.m.Y - H:i', $result->signup_time) . '</span>';
+		// Изучил ли урок
+		$is_learned = $flag_learned->is_flagged($result->lesson_id);
+		// Если изучил, то выводим только название урока
+		if ($is_learned) {
+			$lesson_title = $result->lesson_title . '<br />';
+		// Иначе название со ссылкой на урок
+		} else {
+			$lesson_title = l($result->lesson_title, 'node/' . $result->lesson_id) . '<br />';
+		}
+		// Есть ли результат теста для данного урока
+		$quiz_result = training_get_quiz_result($user->uid, $result->quiz_id);
+		//dpm($quiz_result);
+		// Если есть результат теста
+		if ($quiz_result) {
+			// Проверяем, сдан ли данный тест
+			$is_passed_quiz = quiz_is_passed($user->uid, $result->quiz_id, $quiz_result->vid);
+			// Если сдан тест
+			if ($is_passed_quiz) {
+				$quiz_status = '<span>Тест сдан</span>';
+			}
+		// Иначе возвращаем FALSE и статус теста "Не сдан"
+		} else {
+			$is_passed_quiz = FALSE;
+			if ($is_learned) {
+				$quiz_status = l(t('Пройти тест'), 'node/' . $result->quiz_id);
+			} else {
+				$quiz_status = t('Изучите урок');
+			}
+		}
+				
+		// Названия заголовков таблицы
+		$header = array(
+			'title' => 'Название урока',
+			'signup' => 'Подписка',
+			'quiz' => 'Тестирование',	
+		);
+		
+		$rows[] = array(
+			'title' => $lesson_title,
+			'signup' => $signup_time,
+			'quiz' => $quiz_status ,
+		);
+		dpm($rows);
+		
+		$lessons = theme('table', array(
+			'header' => $header,
+			'rows' => $rows,
+			'attributes' => array('id' => 'lessons-of-course'),
+		));
+		
+		$items[$result->block_id] = array(
+			'data' => '<span class="block-title title">' . $block_name . '</span>',
+			'class' => array('training-block-item collapsed'),
+			'children' => array(
+				$result->course_id => array(
+					'data' => '<span class="course-title title">' . $course_name . '</span>',
+					'class' => array('training-course-item collapsed'),
+					'children' => array(
+						'data' => $lessons,
+					),
+				),
+			),
+		);
+		
+		// ID блока
+		$block_id = $result->block_id;
+		$course_id = $result->course_id;
+	}
+	//dpm($items);
+	
+	$title = '';
+	$type = "ul";
+	$attributes = array(
+		'id' => 'training-my-lessons'
+	);
+	
+	// Если есть уроки, на которые подписан пользователь
+	if ($items) {
+		$output = theme('item_list', array(
+			'items' => $items,
+			'title' => $title,
+			'type' => $type,
+			'attributes' => $attributes,
+		));
+	} else {
+		$output = t('<p>Вы не подписаны ни на один урок.</p>');
+	}
+	
+	return $output;
+}
+*/

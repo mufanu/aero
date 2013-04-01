@@ -1,0 +1,145 @@
+/*
+ * Userbook search form
+ */
+#userbook-search-form {
+    border: 1px solid #999999;
+    margin: 15px 0 25px;
+    padding: 10px;
+}
+
+#userbook-search-form .second-col {
+	float: right;
+}
+
+#userbook-search-form .second-col #edit-submit {
+	margin-right: 5px;
+}
+
+#userbook-search-form label {
+	display: inline-block;
+	text-align: right;
+}
+
+#userbook-search-form #autocomplete {
+	background: #fff;
+	border: 1px solid #999;
+	border-top: 0;
+}
+
+#userbook-search-form #autocomplete ul {
+	padding: 0;
+}
+
+#userbook-search-form #autocomplete li {
+	padding-left: 3px;
+}
+
+#userbook-search-form input.form-autocomplete {
+	background: none;
+	border: 1px solid #7F9DB9;
+	padding: 2px;
+}
+
+#userbook-search-form .form-item {
+	margin: 5px 0;
+}
+
+/*
+ * Standard search
+ */
+#userbook-search-form #standard-search .first-col {
+	width: 800px;
+}
+
+#userbook-search-form #standard-search .first-col #edit-fullname {
+	width: 730px;
+}
+
+/*
+ * Extended search
+ */
+
+#userbook-search-form #edit-extended-spoiler .second-col,
+#userbook-search-form #edit-extended-spoiler .first-col {
+	width: 450px;
+}
+
+#userbook-search-form #edit-extended-spoiler label {
+	width: 80px;
+}
+
+/*
+ * Users list
+ */
+
+#departments h3,
+#departments ul,
+#departments .department {
+	margin: 5px 0;
+}
+
+#departments h3,
+#departments a.collapsed,
+#departments a.expanded,
+#departments a.hidden,
+#departments .department {
+    color: #CC0000;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 14px;
+}
+
+#departments ul {
+	padding-left: 10px;
+}
+
+#departments .level-2 {
+	padding-left: 10px;
+}
+
+#departments .level-3 {
+	padding-left: 20px;
+}
+
+#departments .level-4 {
+	padding-left: 30px;
+}
+
+#departments .level-5 {
+	padding-left: 40px;
+}
+
+#departments .level-6 {
+	padding-left: 50px;
+}
+
+#departments .level-7 {
+	padding-left: 60px;
+}
+
+#departments .level-8 {
+	padding-left: 70px;
+}
+
+#departments .level-9 {
+	padding-left: 80px;
+}
+
+#departments li{
+	list-style: none;
+}
+
+#departments .status {
+	padding-left: 10px;
+}
+
+#departments a.collapsed,
+#departments a.hidden {
+	padding-left: 20px;
+	background: url(trigger.png) no-repeat;
+}
+
+#departments a.expanded {
+	padding-left: 20px;
+	background: url(trigger.png) no-repeat scroll 0 -17px;
+}

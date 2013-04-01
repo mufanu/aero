@@ -1,0 +1,51 @@
+/*! jQuery UI - v1.9.1 - 2012-11-12
+* http://jqueryui.com
+* Includes: 
+* Copyright (c) 2012 jQuery Foundation and other contributors Licensed MIT */
+
+.ui-corner-all {
+	border: 0;
+}
+
+.ui-widget-header {
+	background: none;
+}
+
+.ui-state-default,
+.ui-widget-content .ui-state-default,
+.ui-widget-header .ui-state-default {
+	background: none;
+}
+
+.ui-state-default {
+	width: 32%;
+	float: left;
+	border: 1px solid #d3d3d3;
+	background: #e6e6e6 url(images/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50% repeat-x;
+	color: #555555;
+	list-style: none;
+}
+
+.ui-state-default a {
+	color: #CC0000!important;
+	font-weight: bold;
+	font-size: 0.875em;
+}
+
+.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active { border: 1px solid #aaaaaa; background: #ffffff url(images/ui-bg_glass_65_ffffff_1x400.png) 50% 50% repeat-x; font-weight: normal; color: #212121; }
+.ui-state-active a, .ui-state-active a:link, .ui-state-active a:visited { color: #212121; text-decoration: none; }
+
+.ui-tabs-hide {
+	display: none;
+}
+
+.ui-widget-content {
+	background: none;
+	border: 0;
+	text-align: center;
+}
+
+#tabs-2,
+#tabs-3 {
+	padding-top: 40px;
+}

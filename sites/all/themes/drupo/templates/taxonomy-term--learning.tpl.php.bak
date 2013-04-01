@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * Шаблон темизации страницы блок в учебном центре.
+ * Отображает списко список курсов данного блока.
+ */
+
+$vid = 2;
+$parent = arg(2);
+$max_depth = 2;
+	
+$tree = taxonomy_get_tree($vid, $parent, $max_depth);
+	
+foreach ($tree as $course) {
+	// Ссылка на курсы
+		$courses = l($course->name, 'taxonomy/term/' . $course->tid, array('attributes' => array('class' => 'collapsed')));;
+		
+		if ($is_manager) {
+			$query2 = array(
+				'course' => $course->tid,
+			);
+			
+			$admin_links = l(t('Delete'), 'training-center/learning/course/delete', array(
+				'attributes' => array(
+					'class' => 'manager-actions'
+				),
+				'query' => $query2,
+			));
+		}
+		
+		$items[] = $courses . $admin_links;
+	}
+	// Атрибуты для списка, нам пока они не нужны. Поэтому указываем пустой массив.
+		$type = "ul";
+		$attributes = array(
+			'id' => 'block-list',
+		);
+		
+		$output .= theme_item_list(array(
+			'items' => $items,
+			// Заголовок списка не печатаем.
+			'title' => null,
+			'type' => $type,
+			'attributes' => $attributes
+			));
+?>
+<div id="taxonomy-term-<?php print $term->tid; ?>" class="<?php print $classes; ?>">
+
+  
+
+  <div class="content">
+    <?php print($output); ?>
+  </div>
+
+</div>

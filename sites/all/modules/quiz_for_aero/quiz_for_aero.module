@@ -1,0 +1,295 @@
+<?php
+
+/*
+ * Модуль подстраивает quiz под требования АэроЭкспресс, не меняя самого модуля quiz
+ */
+
+// Разрешенное число раз для прохождения теста перед отменой флага подтверждения изучения урока.
+define("MAX_TAKE_COUNT", 3);
+// Формат времени для вывода времени прохождения теста.
+define("TIME_FORMAT", 'i:s');
+// Название флага "Подтверждаю изучение урока".
+define('FLAG', 'learned');
+
+/*
+ * Implements hook_theme_registry_alter().
+ */
+function quiz_for_aero_theme_registry_alter(&$theme_registry) {
+	if (isset($theme_registry['quiz_take_summary'])) {
+    $theme_registry['quiz_take_summary']['function'] = 'quiz_for_aero_quiz_type';
+  }
+}
+
+function quiz_for_aero_quiz_type($variables) {
+	$quiz = $variables['quiz'];
+	$lid = $quiz->field_lesson['und'][0]['target_id'];
+	$node = node_load($lid);
+	//dpm($node);
+	if ($node->type == 'lesson') {
+		return quiz_for_aero_quiz_validate($variables);
+	}
+	if ($node->type == 'doc_for_drivers') {
+		return quiz_for_aero_quiz_type_doc($variables);
+	}
+}
+
+/*
+ * Функция обрабатывает результат теста для дистанционных курсов
+ */
+
+function quiz_for_aero_quiz_validate($variables) {
+	global $user;
+	$output = '';
+  $quiz = $variables['quiz'];
+	dpm($quiz);
+  $questions = $variables['questions'];
+	//dpm($questions);
+  $score = $variables['score'];
+	//dpm($score);
+  $summary = $variables['summary'];
+	//dpm($summary);
+	$rid = $variables['rid'];
+	// ID урока, которому принадлежит данный тест.
+	$lid = $quiz->field_lesson['und'][0]['target_id'];
+	// Сдан ли данный тест? Возможно не понадобиться, вместо него будем использовать $score['passing'].
+	//$is_passed_quiz = quiz_is_passed($user->uid, $quiz->nid, $quiz->vid);
+	
+  // Set the title here so themers can adjust.
+  drupal_set_title($quiz->title);
+	// Количество попыток сдачи теста.
+	$count = quiz_for_aero_takes_count($quiz->nid, $quiz->vid, $user->uid);
+	// Время прохождения теста.
+	$takes_time = quiz_for_aero_takes_time($quiz->nid, $quiz->vid, $rid);
+	
+  //Проверен ли тест автоматически?
+	if($score['is_evaluated']) {
+		// Сдан ли тест?
+		if ($score['passing']) {
+			$passing = 'тест сдан';
+			$lesson = node_load($lid);
+			$course = $lesson->field_course['und'][0]['target_id'];
+			$link = l("Вернуться к курсу", '/taxonomy/term/' . $course);
+		// если не сдан
+		} else {
+			$passing = 'тест не сдан';
+			// Сколько раз сдавал тест
+			// Если сдавал уже 3 раза
+			if($count == 0) {
+				// Убираем флаг и выводим ссылку на урок
+				$takes_info = '<span style="color: red">У вас больше не осталось попыток сдачи теста. Изучите материалы урока заново.</span>';
+				$link = l("Вернуться к материалам урока", '/node/' . $lid);
+				// Убираем подтверждение изучения урока.
+				flag('unflag', FLAG, $lid);
+			// если сдавал меньше 3 раз
+			} else {
+				// Показываем оставшееся количество раз.
+				if ($count == 2) {
+					$takes_info = t('У вас осталась %takes попытка сдачи теста.', array('%takes' => (MAX_TAKE_COUNT - $count)));
+				} else {
+					$takes_info = t('У вас осталось %takes попытки сдачи теста.', array('%takes' => (MAX_TAKE_COUNT - $count)));
+				}
+				// Ссылка на тест
+				$link =  l("Пройти тест", '/node/' . $quiz->nid);
+			}
+		}
+		$output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>' . $passing . '</div>';
+		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
+		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+		if (isset($takes_info)) {
+			$output .= '<div id="quiz-takes-info">' . $takes_info . '</div>';
+		}
+		$output .= '<div id="quiz-links">' . $link . '</div>';
+		
+	// если нет, значит эти тесты проверяются в ручную. Пока не придумали функционал.
+	} else {
+		// Выводим об этом сообщение.
+		$msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
+		drupal_set_message($msg, 'warning');
+		
+		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
+		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+		//$output .= '<div id="quiz-links">' . $link . '</div>';
+	}
+	
+	return $output;
+}
+
+/*
+ * Функция обрабатывает результат теста для машинистов
+ */
+
+function quiz_for_aero_quiz_type_doc($variables) {
+	global $user;
+	$output = '';
+  $quiz = $variables['quiz'];
+  $questions = $variables['questions'];
+  $score = $variables['score'];
+  $summary = $variables['summary'];
+	$rid = $variables['rid'];
+	// ID документа, которому принадлежит данный тест.
+	$lid = $quiz->field_lesson['und'][0]['target_id'];	
+  // Set the title here so themers can adjust.
+  drupal_set_title($quiz->title);
+	// Время прохождения теста.
+	$takes_time = quiz_for_aero_takes_time($quiz->nid, $quiz->vid, $rid);
+	
+  //Проверен ли тест автоматически?
+	if($score['is_evaluated']) {
+		// Сдан ли тест?
+		if ($score['passing']) {
+			$passing = 'тест сдан';
+			$lesson = node_load($lid);
+			$course = $lesson->field_course['und'][0]['target_id'];
+			$link = l("Вернуться к документам", '/taxonomy/term/' . $course);
+		// если не сдан
+		} else {
+			$passing = 'тест не сдан';
+			$link =  l("Пройти тест", '/node/' . $quiz->nid);
+		}
+		$output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>' . $passing . '</div>';
+		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
+		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+		if (isset($takes_info)) {
+			$output .= '<div id="quiz-takes-info">' . $takes_info . '</div>';
+		}
+		$output .= '<div id="quiz-links">' . $link . '</div>';
+		
+	// если нет, значит эти тесты проверяются в ручную. Пока не придумали функционал.
+	} else {
+		// Выводим об этом сообщение.
+		$msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
+		drupal_set_message($msg, 'warning');
+		
+		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
+		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+		//$output .= '<div id="quiz-links">' . $link . '</div>';
+	}
+	
+	return $output;
+}
+
+/*
+ * Функция вычисляет количество имеющихся результатов теста для конкретного пользоватлея
+ * делит его на количество возможных попыток  сдачи теста и возвращает остаток.
+ * Остаток и есть количество попыток сдачи теста. Если остаток 0, то пользователь
+ * Уже исперчапал все попытки.
+ * Важно!!! Если администратор меняет тест, то создается новая ревизия и результаты теста
+ * будут заводиться заново.
+ */
+function quiz_for_aero_takes_count($nid, $vid, $uid) {
+	$query = db_select('quiz_node_results', 'r');
+	$query->condition(
+		db_and()
+			->condition('r.nid', $nid)
+			->condition('r.vid', $vid)
+			->condition('r.uid', $uid)
+	);
+	$query->addExpression('COUNT(*)');
+	
+	$count = ($query->execute()->fetchField() % MAX_TAKE_COUNT);
+	
+	return $count;
+}
+
+/*
+ * Функция возвращает время прохождения теста.
+ */
+function quiz_for_aero_takes_time($nid, $vid, $rid) {
+	$query = db_select('quiz_node_results', 'r')
+	->condition(
+		db_and()
+			->condition('r.nid', $nid)
+			->condition('r.vid', $vid)
+			->condition('r.result_id', $rid)
+	)
+	->fields('r')
+	->execute()
+	->fetchObject();
+	
+	$time = date(TIME_FORMAT, ($query->time_end - $query->time_start));
+	
+	return $time;
+}
+
+
+/*
+function quiz_for_aero_output() {
+	// Если число сделанных попыток меньше 3-х, т.е. остаток не равен нулю.
+	if (!($count == 0)) {
+			if (!empty($score['possible_score'])) {
+				
+				if (isset($summary['passfail'])) {
+					
+				} else {
+					
+				}
+				
+				
+				if (isset($summary['passfail'])) {
+					
+				}				
+				if (!isset($summary['passfail'])) {
+					
+					
+				}
+			}
+	// Если это была последняя попытка сдачи теста
+	} elseif ($count == 0) {
+		// выводим информацию
+		if (!empty($score['possible_score'])) {
+			if (!$score['is_evaluated']) {
+				$msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
+				drupal_set_message($msg, 'warning');
+			}
+			if (isset($summary['passfail'])) {
+				$output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>тест сдан</div>' . "\n";
+			} else {
+				$output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>тест не сдан</div>' . "\n";
+			}
+			$output .= '<div id="quiz_score_possible">' . t('Possible questions: %question_count', array('%question_count' => $score['possible_score'])) . '</div>' . "\n";
+			$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>' . "\n";
+			$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => date('i:s', ($query['time_end'] - $query['time_start'])))) . '</div>' . "\n";
+			$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>' . "\n";
+			if (isset($summary['passfail'])) {
+					$lesson = node_load($lid);
+					$course = $lesson->field_course['und'][0]['target_id'];
+					$output .= '<div id="quiz_back_course"><a href="/taxonomy/term/' . $course . '">Вернуться к курсу</a></div>' . "\n";
+				}		
+			if (!isset($summary['passfail'])) {
+					
+				}
+		}
+		// Если тест не сдан в 3 раз
+		if (!$score['passing']) {
+			// Удаляем флаг подтверждение изучения для данного урока
+			$unflag = db_delete('flag_content')
+			->condition(
+				db_and()
+					->condition('uid', $user->uid)
+					->condition('fid', 3)
+					->condition('content_id', $lid)
+			)
+			->execute();
+		}
+		
+	}
+  
+  if (isset($summary['result'])) {
+    $output .= '<div id="quiz_summary">' . $summary['result'] . '</div>' . "\n";
+  }
+  // Get the feedback for all questions. These are included here to provide maximum flexibility for themers
+  if ($quiz->display_feedback) {
+    $form = drupal_get_form('quiz_report_form', $questions);
+    $output .= drupal_render($form);
+  }
+  return $output;
+}
+*/

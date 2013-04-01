@@ -1,0 +1,6 @@
+name = Training my lessons
+description = Вывод списка уроков пользователя в Личном кабинете
+core = 7.x
+
+stylesheets[all][] = training_my_lessons.css
+scripts[] = training_my_lessons.js

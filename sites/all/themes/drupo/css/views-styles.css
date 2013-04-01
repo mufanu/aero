@@ -1,0 +1,513 @@
+/**
+ * @file
+ * Views Styling
+ */
+
+
+/*
+ * Views' admin tabs
+ *
+ * The views admin tabs use the same classes as the secondary tabs. We prevent
+ * some of our tab styling from bleeding into (and breaking) the Views admin
+ * pages. If your sub-theme isn't used for admin pages, you can remove this
+ * entire section.
+ */
+
+.views-displays .secondary li {
+  float: none;
+  margin: 0 6px 0;
+}
+
+.views-displays .secondary a:link,
+.views-displays .secondary a:visited {
+  text-shadow: none;
+  padding: 2px 7px 3px;
+}
+
+.views-displays .secondary .open > a {
+  -webkit-border-radius: 7px 7px 0 0;
+  -moz-border-radius: 7px 7px 0 0;
+  -ms-border-radius: 7px 7px 0 0;
+  -o-border-radius: 7px 7px 0 0;
+  border-radius: 7px 7px 0 0;
+}
+
+.views-displays .secondary .open > a:hover {
+  color: #333;
+}
+
+.views-displays .secondary .action-list li {
+  margin: 0;
+}
+
+.views-displays .secondary .action-list li:first-child {
+  -webkit-border-radius: 0 7px 0 0;
+  -moz-border-radius: 0 7px 0 0;
+  -ms-border-radius: 0 7px 0 0;
+  -o-border-radius: 0 7px 0 0;
+  border-radius: 0 7px 0 0;
+}
+
+.views-displays .secondary .action-list li:last-child {
+  -webkit-border-radius: 0 0 7px 7px;
+  -moz-border-radius: 0 0 7px 7px;
+  -ms-border-radius: 0 0 7px 7px;
+  -o-border-radius: 0 0 7px 7px;
+  border-radius: 0 0 7px 7px;
+}
+
+/*
+ * User profile styles
+ */
+
+.view-users .views-row {
+	margin-bottom: 20px;
+	min-height: 200px;
+}
+
+.view-users .views-row-even {
+	/*background: #EFEFEF;*/
+}
+
+.view-users .views-field-picture {
+	position: absolute;
+	right: 10px;
+}
+
+.view-display-id-new_users .views-field-picture,
+.view-display-id-birthday .views-field-picture {
+	position: relative;
+	text-align: center;
+	right: 0;
+}
+
+.view-display-id-birthday .views-field-field-user-birthday {
+	margin: 0;
+	text-align: center;
+	font-size: 0.75em;
+}
+
+.view-display-id-new_users .views-field-picture img,
+.view-display-id-birthday .views-field-picture img {
+	height: 60px;
+	width: 50px;
+}
+
+.view-display-id-new_users .views-field-field-user-full-name,
+.view-display-id-birthday .views-field-field-user-full-name {
+	font-size: 0.75em;
+	text-align: center;
+	word-wrap: word-break;
+}
+
+.view-users .field {
+	line-height: 1.8em;
+}
+
+.view-users .field-items {
+	margin-left: 5px;
+}
+
+.view-users .fieldset ul {
+	display: none;
+}
+
+.view-users .views-field-ops a {
+	background: url(../images/flag-icon.png) no-repeat;
+	padding-left: 20px;
+	display: inline-block;
+	height: 16px;
+}
+
+.view-users .views-field-ops a.unflag-action {
+	background: url(../images/flag-icon.png) no-repeat scroll 0 -16px;
+}
+
+.view-display-id-userbook ul,
+.view-display-id-myprofile ul {
+	padding: 0;
+	list-style: none;
+	color: #777;
+}
+
+.view-display-id-userbook ul h2,
+.view-display-id-myprofile ul h2 {
+	color: #515151;
+}
+
+.view-display-id-userbook .collapsible {
+	float: left;
+	cursor: pointer;
+	background: url(../images/trigger.gif) no-repeat scroll 0 0;
+	height: 14px;
+	width: 14px;
+	margin-right: 5px;
+}
+
+.view-grouping-header {
+	font-size: 1.2em;
+	font-weight: bold;
+	background: url(../images/trigger.gif) no-repeat scroll 0 0;
+	padding-left: 20px;
+	cursor: pointer;
+	line-height: 14px;
+	margin-bottom: 5px;
+	color: #CC0000;
+}
+
+.view-grouping-content {
+	padding-left: 10px;
+	/*display: none;*/
+}
+
+.view-display-id-new_users .views-row,
+.view-display-id-birthday .views-row {
+	float: left;
+	min-height: 50px;
+	width: 80px;
+	margin-right: 10px;
+}
+
+/*
+ * Profile styles
+ */
+.view-display-id-myprofile .field-items {
+	margin: 0;
+}
+.view-display-id-myprofile .views-field-field-user-position,
+.view-display-id-myprofile .views-field-group-audience,
+.view-display-id-myprofile .views-field-field-user-manager,
+.view-display-id-myprofile.views-field-field-user-contact-name,
+.view-display-id-myprofile .views-field-field-user-birthday {
+	width: 475px;
+}
+
+/*
+ * Userbook styles
+ */
+.view-userbook ul {
+	list-style: none;
+	padding-left: 20px;
+}
+.view-userbook .department {
+	font-size: 1.2em;
+	font-weight: bold;
+	background: url(../images/trigger.gif) no-repeat scroll 0 0;
+	padding-left: 20px;
+	cursor: pointer;
+	line-height: 14px;
+	margin-bottom: 5px;
+	color: #CC0000;
+}
+
+.view-userbook .item-list:first-child,
+.view-userbook .views-field-view:first-child {
+	/*display: block;*/
+}
+.view-userbook .views-field-view,
+.view-userbook .item-list {
+	/*display: none;*/
+}
+
+
+/*
+ * Exposed filters
+ */
+#views-exposed-form-users-userbook {
+	padding: 10px;
+	border: 1px solid #999;
+	margin: 15px 0 25px 0;
+}
+
+#edit-field-user-surname-value-wrapper,
+#edit-field-user-name-value-wrapper,
+#edit-field-user-full-name-value-wrapper,
+#edit-field-user-office-value-wrapper,
+#edit-name-wrapper,
+#edit-field-user-position-value-wrapper,
+#edit-field-user-mobile-value-wrapper,
+#edit-field-user-phone-value-wrapper {
+	float: none;
+	width: 400px;
+}
+
+#edit-name-wrapper,
+#edit-field-user-position-value-wrapper,
+#edit-field-user-mobile-value-wrapper,
+#edit-field-user-phone-value-wrapper {
+	margin-left: 400px;
+}
+
+#edit-field-user-surname-value-wrapper label,
+#edit-field-user-name-value-wrapper label,
+#edit-field-user-full-name-value-wrapper label,
+#edit-field-user-office-value-wrapper label,
+#edit-name-wrapper label,
+#edit-field-user-position-value-wrapper label,
+#edit-field-user-mobile-value-wrapper label,
+#edit-field-user-phone-value-wrapper label,
+#edit-name-wrapper label,
+#edit-field-user-position-value-wrapper label,
+#edit-field-user-mobile-value-wrapper label,
+#edit-field-user-phone-value-wrapper label {
+	display: inline-block;
+	width: 100px;
+	text-align: right;
+}
+
+#edit-field-user-surname-value-wrapper .views-widget,
+#edit-field-user-name-value-wrapper .views-widget,
+#edit-field-user-full-name-value-wrapper .views-widget,
+#edit-field-user-office-value-wrapper .views-widget,
+#edit-name-wrapper .views-widget,
+#edit-field-user-position-value-wrapper .views-widget,
+#edit-field-user-mobile-value-wrapper .views-widget,
+#edit-field-user-phone-value-wrapper .views-widget,
+#edit-name-wrapper .views-widget,
+#edit-field-user-position-value-wrapper .views-widget,
+#edit-field-user-mobile-value-wrapper .views-widget,
+#edit-field-user-phone-value-wrapper .views-widget {
+	display: inline-block;
+}
+
+#edit-name-wrapper {
+	margin-top: -104px;
+}
+
+.views-submit-button,
+.views-reset-button {
+	margin-left: 800px;
+	padding: 0!important;
+}
+
+.views-submit-button {
+	margin-top: -75px;
+}
+
+.views-reset-button {
+	margin-top: -50px;
+}
+
+.views-exposed-form .views-exposed-widget .form-submit {
+	margin: 0;
+}
+
+/*
+ * View FAQ
+ */
+.view-faq .views-row {
+	margin: 10px;
+	padding: 5px;
+}
+
+.view-faq .views-row-even {
+	background: #EFEFEF;
+}
+
+.view-display-id-faq tbody,
+.view-display-id-faq td {
+	border: 0;
+}
+
+/*
+ * jcarousel styling
+ */
+
+/*
+ * Photoalbum and video jcarousel styling
+ */
+.view-id-photo .jcarousel-skin-default .jcarousel-container-horizontal,
+.view-videoalbums .jcarousel-skin-default .jcarousel-container-horizontal {
+	width: 291px;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-container-vertical,
+.view-videoalbums .jcarousel-skin-default .jcarousel-container-vertical {
+	width: 131px;
+	height: auto;
+	padding: 40px 0;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-clip-horizontal,
+.view-videoalbums .jcarousel-skin-default .jcarousel-clip-horizontal {
+	width: 291px;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-item-horizontal,
+.view-videoalbums .jcarousel-skin-default .jcarousel-item-horizontal {
+	height: 160px;
+	width: 138px;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-item-vertical,
+.view-videoalbums .jcarousel-skin-default .jcarousel-item-vertical {
+	width: 131px;
+	height: auto;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-prev-vertical {
+	background-position: 0 -64px;
+    left: 50px;
+    position: absolute;
+    top: 0;
+}
+
+.view-id-photo .jcarousel-skin-default .jcarousel-next-vertical {
+	background-position: 0 -96px;
+    left: 50px;
+    position: absolute;
+    bottom: 0;
+}
+
+.view-id-photo .views-field-title,
+.view-videoalbums .views-field-title {
+	margin-bottom: 5px;
+	font-size: 0.75em;
+	text-align: center;
+}
+
+.view-id-photo .views-field-body,
+.view-videoalbums .views-field-body {
+	text-align: left;
+}
+
+/*
+ *
+ */
+.view-id-video .jcarousel-skin-default .jcarousel-container-horizontal {
+	padding: 20px 60px;
+	width: auto;
+}
+
+.view-id-video .jcarousel-skin-default .jcarousel-clip-horizontal {
+	width: 640px;
+}
+
+.view-id-video .jcarousel-skin-default .jcarousel-prev-horizontal {
+	left: 0;
+	top: 35%;
+}
+
+.view-id-video .jcarousel-skin-default .jcarousel-next-horizontal {
+	right: 0;
+	top: 35%;
+}
+
+/*
+ * Videos list in path /videos/%
+ */
+.view-videoalbum-list .jcarousel-container-vertical {
+	width: 131px;
+}
+
+.view-id-videoalbum_list .jcarousel-item-vertical {
+	height: 140px;
+}
+
+/*
+ * Users
+ */
+.view-display-id-new_users .jcarousel-item-horizontal,
+.view-display-id-birthday .jcarousel-item-horizontal {
+	height: 120px;
+	width: 80px;
+}
+
+/*
+ * Learning table styles
+ */
+.view-learning thead tr,
+.view-learning tbody tr {
+	border-top: 1px solid #ccc;
+}
+
+.view-learning thead th {
+	padding: 5px;
+	background: #efefef;
+}
+
+.view-learning tbody td {
+	border: 0;
+	padding: 10px 5px;
+}
+
+.view-learning tr,
+.view-learning td.active {
+	background: #fff;
+}
+
+.view-learning .views-field-ops {
+	width: 200px;
+}
+
+.view-learning .views-field-field-test {
+	width: 120px;
+}
+
+/*
+ * My lessons style
+ */
+
+.view-my-lessons .view-header {
+	margin: 5px 0 10px 0;
+}
+.view-my-lessons .view-grouping-header,
+.view-my-lessons h3 {
+	font-weight: normal;
+	font-size: 1em;
+	background: none;
+	corsor: none;
+	padding: 0;
+}
+
+.view-my-lessons h3,
+.view-my-lessons table {
+	margin: 0 0 5px 0;
+}
+
+.view-my-lessons td {
+	border: 0;
+	padding-left: 10px;
+}
+
+.view-my-lessons .views-field-timestamp {
+	color: #D7D7D7;
+}
+
+.view-my-lessons .views-field-timestamp:hover {
+	color: inherit;
+}
+
+/*
+ * Tasks
+ */
+.view-tasks .views-submit-button {
+	display: none;
+}
+
+/*
+ * Training tables styles
+ */
+.view-blocks thead tr,
+.view-blocks tbody tr {
+	border-top: 1px solid #ccc;
+}
+
+.view-blocks thead th {
+	padding: 5px;
+	background: #efefef;
+}
+
+.view-blocks tbody td {
+	border: 0;
+	padding: 10px 5px;
+}
+
+.view-blocks tr,
+.view-blocks td.active {
+	background: #fff;
+}
+
+.view-blocks .training-term-name {
+	width: 575px;
+}

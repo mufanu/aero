@@ -1,0 +1,56 @@
+.item-list ul.training-admin-links {
+	margin: 0;
+	padding: 0;
+}
+
+.item-list ul.training-admin-links li {
+	display: inline;
+	margin-right: 5px;
+}
+
+
+.item-list ul.training-admin-links a {
+	color: #D3D3D3!important;
+	text-decoration: none;
+}
+
+.item-list ul.training-admin-links a:hover {
+	text-decoration: underline;
+	color: red!important;
+}
+
+#content li:hover .training-admin-links {
+	
+}
+
+.admin-links li {
+	display: inline;
+	margin-right: 10px;
+}
+
+/*
+ * Table styles
+ */
+#training-table thead tr,
+#training-table tbody tr {
+	border-top: 1px solid #ccc;
+}
+
+#training-table thead th {
+	padding: 5px;
+	background: #efefef;
+}
+
+#training-table tbody td {
+	border: 0;
+	padding: 10px 5px;
+}
+
+#training-table tr,
+#training-table td.active {
+	background: #fff;
+}
+
+#training-table .training-term-name {
+	width: 575px;
+}

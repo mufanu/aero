@@ -1,0 +1,3 @@
+name = Quiz my resulys
+description = Вывод результатов тестов пользователя в Личном кабинете
+core = 7.x

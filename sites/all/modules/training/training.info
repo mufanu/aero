@@ -1,0 +1,7 @@
+name = Training center
+description = Дополнительная функциональность для Учебного центра
+core = 7.x
+
+stylesheets[all][] = training.css
+
+configure = admin/training

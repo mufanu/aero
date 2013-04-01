@@ -1,0 +1,19 @@
+body {
+	background: url(../images/bg.gif) repeat-x #494949;
+}
+
+#header {
+	background: url(../images/header_overlay.png) #F11D1D;
+}
+
+#navigation {
+	background: url(../images/navOverlay.png) repeat-x #F11D1D;
+}
+
+#main {
+	background: #fff;
+}
+
+.sidebar-first #main {
+	background: url(../images/first-sidebar-main-bg.png) repeat-y;
+}

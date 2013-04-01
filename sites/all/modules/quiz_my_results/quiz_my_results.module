@@ -1,0 +1,77 @@
+<?php
+
+function quiz_my_results_menu() {
+	$items['user/%/myresults'] = array(
+    'title' => 'My results',
+    'page callback' => 'quiz_my_results_get',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+	
+	return $items;
+}
+
+function quiz_my_results_get() {
+	global $user;
+	$uid = $user->uid;
+	$rows = '';
+	$is_passed_quiz = '';
+	$query = db_select('node', 'n');
+	$query->join('quiz_node_results', 'qnr', 'n.nid = qnr.nid');
+	$query->join('quiz_node_properties', 'qnp', 'qnr.vid = qnp.vid');
+	$query->fields('n', array('title', 'nid'));
+	$query->fields('qnr', array('time_start', 'time_end', 'score', 'is_evaluated'));
+	$query->fields('qnp', array('vid'));
+	$query->condition('qnr.uid', $uid);
+	$results = $query->execute()->fetchAll();
+	
+	//dpm($results);
+	
+	foreach ($results as $result) {
+		// Сдан ли тест
+		$is_passed_quiz = quiz_is_passed($uid, $result->nid, $result->vid);
+		if ($is_passed_quiz) {
+			$title = $result->title;
+			$score = $result->score . '% сдан' ;
+		} else {
+			$title = l($result->title, 'node/' . $result->nid);
+			$score = '<span style="color:red">' . $result->score . '% не сдан</span>' ;
+		}
+		$time_start = date('d.m.Y - H:i:s', $result->time_start);
+		$time_end = date('d.m.Y - H:i:s', $result->time_end);
+		if ($result->is_evaluated == 1) {
+			$is_evaluated = 'Да';
+		} else {
+			$is_evaluated = 'Нет';
+		}
+		$rows[] = array(
+			'title' => $title,
+			'start' => $time_start,
+			'stop' => $time_end,
+			'result' => $score,
+			'evaluate' => $is_evaluated,
+		);
+	}
+	
+	$header = array(
+		'title' => 'Название теста',
+		'start' => 'Начало',
+		'stop' => 'Завершено',
+		'result' => 'Результат',
+		'evaluate' => 'Проверен'		
+	);
+	// Если тест сдан, то показываем последний результат
+	if ($is_passed_quiz) {
+		$size = count($rows);
+		$rows = array($rows[$size - 1]);
+	}
+		
+	
+	if ($rows) {
+		$output = theme('table', array('header' => $header, 'rows' => $rows));
+	} else {
+		$output = '<p>На данный момент у Вас нет результатов теста.</p>';
+	}
+	
+	return $output;
+}

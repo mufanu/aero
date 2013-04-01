@@ -1,0 +1,735 @@
+<?php
+
+// Путь к директории модуля
+define('PATH', drupal_get_path('module', 'training'));
+
+define('TAXONOMY_PATH', drupal_get_path('module', 'taxonomy'));
+
+// Словарь для Дистанционных курсов для всех сотрудников.
+define('TRAINING_USERS_VID', variable_get('training_users_vid'));
+
+// Словарь для машинистов.
+define('TRAINING_DRIVERS_VID', variable_get('training_drivers_vid'));
+
+// Максимальная глубина просмотра иерархии терминов.
+define('MAX_DEPTH', 1);
+
+//Путь администрирования дистанционных курсов
+define('ADMIN_PATH', 'training-center/learning/admin');
+
+// Является ли администратором
+define('IS_ADMIN', user_access('administer training'));
+
+// Является ли администратором машинистов
+define('IS_DRIVERS_ADMIN', user_access('administer drivers'));
+
+// Формат даты
+define('DATE_FORMAT', 'd.m.Y - H:i');
+
+/*
+ * Imlements hook_menu().
+ */
+function training_menu() {
+	// Страница администрирования
+	$items['admin/training'] = array(
+		'title' => 'Система обучения',
+		'page callback' => 'training_admin_page',
+		'access arguments' => array('administer training'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'training.admin.inc',
+	);
+	// Путь администрирования, пока блоки и курсы добавляются через этот путь
+	// после переделки удалить!!!
+	$items['training-center/learning/admin'] = array(
+		'title' => 'Администрирование',
+		'page callback' => 'training_admin',
+		'access arguments' => array('administer training'), 
+    'type' => MENU_CALLBACK,
+		'file' => 'training.admin.inc',
+	);
+	
+	return $items;
+}
+
+// Переопределяем страницу термина
+function training_menu_alter(&$items) {
+	$item =	&$items['taxonomy/term/%taxonomy_term'];
+	$item['page callback'] = '_training_term_page';
+	$item['page arguments'] = array(2);
+	// Переопределяем права доступа к тесту
+	$items['node/%node/take']['access callback'] = 'training_quiz_take_access';
+	// Переопределяем права доступа
+	$items['node/%node']['access callback'] = 'training_node_access';
+}
+
+/*
+ * Реализация доступов к урокам, документам и тестам.
+ */
+
+/*
+ * Релизация доступа к уроку и информациионой странице теста
+ *
+ * @param $op
+ *   The operation to be performed on the node. Possible values are:
+ *   "view"
+ *   "update"
+ *   "delete"
+ *   "create"
+ * @param $node
+ *   Node object.
+ */
+function training_node_access($op, $node) {
+	//dpm($op);
+	//dpm($node);
+	//$node_obj = is_object($node) ? $node->nid : $node;
+	
+	if (is_object($node)) {
+		if ($node->type == 'lesson') {
+			return node_access('view', $node) && user_access('access content') && training_node_access_validate($node->nid) === TRUE;
+		}
+		if ($node->type == 'quiz') {
+		return node_access('view', $node) && user_access('access content') && training_quiz_take_access_validate($node) === TRUE;
+  }
+  }
+	/*
+	if ($node->type == 'quiz') {
+		return node_access($op, $node) && user_access('access content') && training_quiz_take_validate($node) === TRUE;
+  }
+	*/
+	
+	return node_access($op, $node);	
+}
+
+/*
+ * Проверка прав доступа к уроку.
+ *
+ * @param $nid
+ *   Node ID.
+ */
+function training_node_access_validate($nid) {
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	// Подписан ли на урок
+	$is_signup = $flag_signup->is_flagged($nid);
+	// Изучил ли урок
+	$is_learned = $flag_learned->is_flagged($nid);
+	// Если подписан на урок и еще не изучил, то доступ открыт
+	if (($is_signup) && (!$is_learned)) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Реализация прав доступа к тесту
+ */
+function training_quiz_take_access($node) {
+	// Если это не тест, то доступ закрыт
+	// т.к. node/%/take 
+  if ($node->type != 'quiz') {
+    return FALSE;
+  }
+  return node_access('view', $node) && user_access('access quiz') && quiz_availability($node) === TRUE && training_quiz_take_access_validate($node) === TRUE;
+}
+
+/*
+ * Проверка прав доступа к тесту
+ *
+ * @param $node
+ *   Quiz node
+ */
+function training_quiz_take_access_validate($node) {
+	global $user;
+	// ID урока
+	$nid = $node->field_lesson['und'][0]['target_id'];
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	// Подписан ли на урок
+	$is_signup = $flag_signup->is_flagged($nid);
+	// Изучил ли урок
+	$is_learned = $flag_learned->is_flagged($nid);
+	// Сдан ли данный тест
+	//dpm($node);
+	$is_passed_quiz = quiz_is_passed($user->uid, $node->nid, $node->vid);
+	$is_evaluated = training_quiz_is_evaluated($user->uid, $node->nid, $node->vid);
+	// Если подписан и изучил урок, то доступ к тесту открыт
+	if (($is_signup) && ($is_learned) && !($is_passed_quiz) && ($is_evaluated)) {
+		return TRUE;
+	}
+	return FALSE;	
+}
+
+function _training_term_page($term) {
+	// Если страница термина словаря
+	if ($term->vid == TRAINING_USERS_VID) {
+		if (training_is_block_or_course_page($term->tid)){
+			return training_courses_page($term);
+		} else {
+			return training_get_lessons($term->tid);
+		}
+	} elseif ($term->vid == TRAINING_DRIVERS_VID) {
+		if (training_is_block_or_course_page($term->tid)){
+			return training_dates_page($term);
+		} else {
+			return training_get_docs($term->tid);
+		}
+	} else {
+		return taxonomy_term_page($term);
+	}
+}
+
+// Отображение курсов.
+function training_courses_page($term){
+	$output = '';
+	$path = 'admin/structure/taxonomy/' . $term->vocabulary_machine_name  . '/add';
+	$menu = menu_get_item($path);
+	$link = l('Добавить', $menu['href'], array('query' => array('tid' => $term->tid) + drupal_get_destination()));
+	// Если есть доступ, то добавляем ссылку "Добавить".
+	if ($menu['access']) {
+		$output .= $link;
+	}
+	$output .= views_embed_view('blocks', 'courses');
+	return $output;
+}
+
+// Отображение дат для машинистов.
+function training_dates_page($term){
+	$output = '';
+	$path = 'admin/structure/taxonomy/' . $term->vocabulary_machine_name  . '/add';
+	$menu = menu_get_item($path);
+	$link = l('Добавить дату', $menu['href'], array('query' => array('tid' => $term->tid) + drupal_get_destination()));
+	// Если есть доступ, то добавляем ссылку "Добавить".
+	if ($menu['access']) {
+		$output .= $link;
+	}
+	$output .= views_embed_view('blocks', 'dates', $term->tid);
+	return $output;
+}
+
+
+/*
+ * Permissions
+ */
+function training_permission() {
+	return array(
+    'administer training' => array(
+      'title' => t('Administer training'), 
+      'description' => t('Allow users to administer training center for all users'),
+    ),
+		'administer drivers' => array(
+      'title' => t('Administer drivers'), 
+      'description' => t('Allow users to administer training center for drivers'),
+    ),
+		'access drivers' => array(
+      'title' => t('Access drivers'), 
+      'description' => t('Allow users to access training center for drivers'),
+    ),
+	);
+}
+
+/*
+ * Получить список уроков
+ */
+function training_get_lessons($id) {
+	global $user;
+	$uid = $user->uid;
+	$id = arg(2);
+	$rows = '';
+	$test_is_eval = 1;
+	$test_vid = 0;
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	$output = '';
+	// Сдан ли тест
+	$is_passed_quiz = 0;
+	// Если администратор, то добавляем ссылку "Добавить урок".
+	if (IS_ADMIN) {
+		$destination = drupal_get_destination();
+		$query = array('tid' => $id) + $destination; // Возможно удалить нужно!!!
+		$output .= l(t('Add lesson'), 'node/add/lesson', array('query' => array('tid' => $id) + $destination));
+	}
+	
+	// Получаем список уроков курса
+	$query = db_select('node', 'n');
+	$query->join('taxonomy_index', 't', 't.nid = n.nid');
+	$query->condition('t.tid', $id);
+	$query->fields('n');
+	$results = $query->execute()->fetchAll();
+		
+	// Названия заголовков таблицы
+	$header = array(
+		'title' => 'Название урока',
+		'signup' => 'Подписка',
+		'quiz' => 'Тестирование',	
+	);
+	
+	// Для каждого урока
+	foreach ($results as $key => $result) {
+		// Получеам id теста из БД
+		$quiz_nid = db_select('field_data_field_lesson', 'f')
+		->condition('f.field_lesson_target_id', $result->nid)
+		->fields('f', array('entity_id'))
+		->execute()
+		->fetchField();
+		// Записываем id теста в массив с ключами $key
+		$quiz_nids[$key] = $quiz_nid;
+		// Подписан ли на урок
+		$is_signup = $flag_signup->is_flagged($result->nid);
+		// Изучил ли урок
+		$is_learned = $flag_learned->is_flagged($result->nid);
+		$flag_object = training_get_flag_content($result->nid, $flag_signup->fid, $uid);
+		// Если подписан на урок
+		if ($is_signup) {
+			$signup = t('Дата подписки<br />') . date(DATE_FORMAT, $flag_object->timestamp);
+			// Если изучил
+			if ($is_learned) {
+				$title = $result->title;
+				// Получаем результат теста
+				$quiz_results = db_select('quiz_node_results', 'q')
+				->condition('q.nid', $quiz_nid)
+				->condition('q.uid', $uid)
+				->fields('q', array('vid', 'time_end', 'is_evaluated'))
+				->execute()
+				->fetchAll();
+				$test_time_end = 0;
+				foreach ($quiz_results as $item) {
+					$test_vid = $item->vid;
+					$test_time_end = $item->time_end;
+					$test_is_eval = $item->is_evaluated;
+				}
+				// Сдан ли данный тест
+				$is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
+				if (($is_passed_quiz) && ($test_is_eval)) {
+					$quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
+				} else {
+					// Проверен ли тест
+					if (!$test_is_eval) {
+						$quiz = 'Тест не оценен';
+					} else {
+						$quiz = l('Пройти тест', 'node/' . $quiz_nid);
+					}
+				}
+			// Не изучил
+			} else {
+				$title = l($result->title, 'node/' . $result->nid);
+				$quiz = t('Изучите урок');
+			}
+		// Не подписан
+		} else {
+			$title = $result->title;
+			// Сдан ли предыдущий тест
+			if ($key == 0) {
+				$is_passed_prev_quiz = TRUE;
+			} else {
+				$is_passed_prev_quiz = quiz_is_passed($uid, $quiz_nids[$key - 1], $test_vid);
+			}
+			if ((($is_passed_prev_quiz) && ($test_is_eval))|| ($key == 0)) {
+				$signup = flag_create_link('signup', $result->nid);
+			} else {
+				$signup = '';
+			}
+			$quiz = '';
+		}
+		
+		$title .= training_admin_links($result->nid, $quiz_nid);
+	
+		$rows[] = array(
+			'title' => $title,
+			'signup' => $signup,
+			'quiz' => $quiz,
+		);
+	}
+	// Если есть уроки
+	if ($rows) {
+		$output .= theme('table', array(
+			'header' => $header,
+			'rows' => $rows,
+			'attributes' => array('id' => 'training-table'),
+		));
+	} else {
+		$output .= t('<div>У данного курса нет уроков.</div>');
+	}
+	
+	return $output;
+}
+
+// Получить список документов для машинистов
+function training_get_docs($id) {
+	global $user;
+	$uid = $user->uid;
+	$id = arg(2);
+	$rows = '';
+	// Флаги - Подписаться и Изучил урок
+	$flag_signup = flag_get_flag('signup');
+	$flag_learned = flag_get_flag('learned');
+	$output = '';
+	// Сдан ли тест
+	$is_passed_quiz = 0;
+	// Если администратор, то добавляем ссылку "Добавить урок".
+	if (IS_DRIVERS_ADMIN) {
+		$destination = drupal_get_destination();
+		$query = array('tid' => $id) + $destination; // Возможно удалить нужно!!!
+		$output .= l('Добавить документ', 'node/add/doc-for-drivers', array('query' => array('tid' => $id) + $destination));
+	}
+	
+	// Получаем список уроков курса
+	$query = db_select('node', 'n');
+	$query->join('taxonomy_index', 't', 't.nid = n.nid');
+	$query->condition('t.tid', $id);
+	$query->fields('n');
+	$results = $query->execute()->fetchAll();
+		
+	// Названия заголовков таблицы
+	$header = array(
+		'title' => 'Название теста',
+		'signup' => 'Подписка',
+		'quiz' => 'Тестирование',	
+	);
+	
+	// Для каждого урока
+	foreach ($results as $key => $result) {
+		// Получеам id теста из БД
+		$quiz_nid = db_select('field_data_field_lesson', 'f')
+		->condition('f.field_lesson_target_id', $result->nid)
+		->fields('f', array('entity_id'))
+		->execute()
+		->fetchField();
+
+		// Подписан ли на урок
+		$is_signup = $flag_signup->is_flagged($result->nid);	
+		// Изучил ли урок
+		$is_learned = $flag_learned->is_flagged($result->nid);
+		
+		$flag_object = training_get_flag_content($result->nid, $flag_signup->fid, $uid);
+		// Если подписан на урок
+		if ($is_signup) {
+			$signup = t('Дата подписки<br />') . date(DATE_FORMAT, $flag_object->timestamp);
+			$title = l($result->title, 'node/' . $result->nid);
+			// Если изучил
+			if ($is_learned) {
+				// Существует ли тест
+				if ($quiz_nid) {
+					// Получаем результат теста
+					$quiz_results = db_select('quiz_node_results', 'q')
+					->condition('q.nid', $quiz_nid)
+					->condition('q.uid', $uid)
+					->fields('q', array('vid', 'time_end'))
+					->execute()
+					->fetchAll();
+					$test_vid = 0;
+					$test_time_end = 0;
+					foreach ($quiz_results as $item) {
+						$test_vid = $item->vid;
+						$test_time_end = $item->time_end;
+					}
+					// Сдан ли данный тест
+					$is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
+					if ($is_passed_quiz) {
+						$quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
+					} else {
+						$quiz = l('Пройти тест', 'node/' . $quiz_nid);
+					}
+				} else {
+					$quiz = 'Тест отсутствует';
+				}
+			} else {
+				$quiz = t('Изучите документ');
+			}
+		} else {
+			$title = $result->title;
+			
+				$signup = flag_create_link('signup', $result->nid);
+			
+
+			$quiz = '';
+		}
+		
+		$title .= training_admin_links($result->nid, $quiz_nid);
+		
+		//dpm($flag);
+		$rows[] = array(
+			'title' => $title,
+			'signup' => $signup,
+			'quiz' => $quiz,
+		);
+	}
+	// Если есть уроки
+	if ($rows) {
+		$output .= theme('table', array(
+			'header' => $header,
+			'rows' => $rows,
+			'attributes' => array('id' => 'training-table'),
+		));
+	} else {
+		$output .= '<div><p>Для данной даты нет документов.</p></div>';
+	}
+	
+	return $output;
+}
+
+/*
+ * Создает ссылки для редактирования уроков, документов и тестов
+ */
+function training_admin_links($nid, $quiz_nid) {
+	$attributes = array('class' => 'training-admin-links');
+	$destination = drupal_get_destination();
+	$items = array();
+	$path = 'node/' . $nid . '/edit';
+	$menu = menu_get_item($path);
+	if ($menu['access']) {
+		$items[] .= l($menu['title'], $menu['href'], array('query' => $destination));
+	}
+	// Если тест уже создан
+	if ($quiz_nid) {
+		$path = 'node/' . $quiz_nid . '/edit';
+		$menu = menu_get_item($path);
+		if ($menu['access']) {
+			$items[] .= l('Редактировать тест', $menu['href'], array('query' => $destination));
+		}
+		$path = 'node/' . $quiz_nid . '/results';
+		$menu = menu_get_item($path);
+		if ($menu['access']) {
+			$items[] .= l($menu['title'], $menu['href']);
+		}
+	} else {
+		$path = 'node/add/quiz';
+		$menu = menu_get_item($path);
+		if ($menu['access']) {
+			$items[] .= l('Добавить тест', $menu['href'], array('query' => array('lid' => $nid)));
+		}
+	}
+	
+	if($items) {
+		return theme('item_list', array('items' => $items,'title' => null,'type' => 'ul','attributes' => $attributes));
+	}
+}
+
+
+/*
+ * Является ли страница термина страницей блока.
+ * В структуре таксономии есть всего два уровня вложенности: блок и курс.
+ * Возвращает:
+ * TRUE - страница курса
+ * FALSE - страница блока
+ */
+function training_is_block_or_course_page($tid) {
+	$is_parents = taxonomy_get_parents($tid);
+	
+	if ($is_parents) {
+		return FALSE;
+	} else {
+		return TRUE;
+	}	
+}
+
+function training_get_flag_content($nid, $fid, $uid) {
+	$result = db_select('flag_content', 'fc')
+	->condition('fc.content_id', $nid)
+	->condition('fc.fid', $fid)
+	->condition('fc.uid', $uid)
+	->fields('fc')
+	->execute()
+	->fetchObject();
+	
+	return $result;
+}
+
+function training_get_quiz_result($uid, $quiz_id) {
+	$results = db_select('quiz_node_results', 'q')
+	->condition('q.nid', $quiz_id)
+	->condition('q.uid', $uid)
+	->fields('q')
+	->execute()
+	->fetchObject();
+
+	return $results;
+}
+/*
+ * Переопределяем форму добавления материалов.
+ */
+function training_form_alter(&$form, &$form_state, $form_id) {
+	global $user;
+	//dpm($user);
+	//dpm($form);
+	//dpm($form_state);
+	if (!($user->uid == 1)) {
+		// Форма добавления терминов
+		if ($form_id == 'taxonomy_form_term') {
+			$form['relations']['parent']['#title'] = 'Родительский элемент';
+			$form['relations']['parent']['#disabled'] = TRUE;
+			$form['relations']['parent']['#multiple'] = FALSE;
+			$form['relations']['weight']['#disabled'] = TRUE;
+			if (isset($_GET['tid'])) {
+				$form['relations']['parent']['#default_value'] = $_GET['tid'];
+			}
+		}		
+		
+		// Форма добавления теста
+		if ($form_id == 'quiz_node_form') {
+			// Если добавляем тест
+			if (isset($_GET['lid'])) {
+				// Указываем к какому уроку он привязан
+				$form['field_lesson']['und']['#default_value'][0] = $_GET['lid'];
+			// Если редактируем тест
+			} else {
+				// Добавляем ссылку на редактирование вопросов теста.
+				$form['edit_questions']['#markup'] = l(t('Edit questions'), 'node/' . arg(1) . '/questions', array('query' => drupal_get_destination()));
+			}
+			// Скрываем некоторые поля
+			$form['quiz_availability']['#type'] = 'hidden';
+			$form['taking']['allow_jumping']['#type'] = 'hidden';
+			$form['body']['#type'] = 'hidden';
+			$form['field_lesson']['#type'] = 'hidden';
+			// Меняем вид
+			$form['taking']['#type']['#collapsible'] = FALSE;
+			$form['taking']['addons']['#collapsible'] = FALSE;
+			// Удаляем ненужные элементы.
+			unset($form['remember_settings']);
+			unset($form['summaryoptions']);
+			unset($form['resultoptions']);
+			unset($form['taking']['allow_resume']);
+			unset($form['taking']['allow_skipping']);
+			unset($form['taking']['backwards_navigation']);
+			unset($form['taking']['repeat_until_correct']);
+			unset($form['taking']['mark_doubtful']);
+			unset($form['taking']['show_passed']);
+			unset($form['taking']['randomization']);
+			unset($form['taking']['feedback']);
+			unset($form['taking']['multiple_takes']);
+			//dpm($form);
+		}
+		// Стандартная форма вывода результатов теста
+		if ($form_id == 'quiz_results_manage_results_form') {
+			//dpm($form);
+			// Запрещаем возможность удаления результатов теста
+			unset($form['update']);
+			$form['special_filters']['#collapsed'] = FALSE;
+		}
+		// Форма добавления типа материала "Вопрос с проверкой в ручном режиме Специалистом по обучению".
+		if ($form_id == 'short_answer_node_form') {
+			//dpm($form);
+			//$form['answer']['correct_answer']['#required'] = TRUE;
+			$form['answer']['correct_answer']['#type'] = 'textarea';
+			$form['answer']['correct_answer_evaluation']['#default_value'] = 3;
+			$form['answer']['correct_answer']['#description'] = 'Укажите правильный ответ (будет отображаться при проверке теста).';
+			$form['add_directly']['#type'] = 'hidden';
+		}
+		// Форма добавления типа материала "Вопрос с множественным выбором".
+		if ($form_id == 'multichoice_node_form') {
+			if (isset($_GET['quiz_nid']) && isset($_GET['quiz_vid'])) {
+				$form['add_directly']['latest']['#default_value'] = array($_GET['quiz_nid'] . '-' . $_GET['quiz_vid']);
+			}			
+			$form['add_directly']['#type'] = 'hidden';
+			//dpm($form);
+		}
+		// Форма добавления Урока.
+		if ($form_id == 'lesson_node_form') {
+			$form['title']['#description'] = 'Название урока нужно вводить в формате <b style="color:red">Урок 1. Название урока</b>!';
+			$form['field_course']['#type'] = 'hidden';
+			if (isset($_GET['tid'])) {
+				$form['field_course']['und']['#default_value'] = $_GET['tid'];
+			}
+		}
+		// Форма добавления Документа.
+		if ($form_id == 'doc_for_drivers_node_form') {
+			$form['title']['#description'] = 'Введите название документа';
+			if (isset($_GET['tid'])) {
+				$form['field_course']['und']['#default_value'] = $_GET['tid'];
+			}
+		}
+		// Форма добавления вопросов
+		if ($form_id == 'quiz_questions_form') {
+			//training_form_quiz_questions_form_alter();
+			//dpm($form);
+			$form['additional_questions']['#collapsible'] = FALSE;
+			$form['question_list']['browser']['#collapsible'] = TRUE;
+			$form['question_list']['browser']['#collapsed'] = TRUE;
+			$form['submit']['#value'] = t('Save');
+		}
+		// Форма проверки результатов теста.
+		if ($form_id == 'quiz_report_form') {
+			//dpm($form);
+			for ($i = 0; isset($form[$i]); $i++) {
+				// Если вопросы уже проверены, то их нельзя корректировать.
+				if ($form[$i]['#is_evaluated'] == TRUE) {
+					$form[$i]['score']['#disabled'] = TRUE;
+					$form[$i]['answer_feedback']['#disabled'] = TRUE;
+				}
+			}
+		}
+		
+		// Форма добавления учебных материалов
+		if ($form_id == 'teaching_material_node_form') {
+			if (isset($_GET['tid'])) {
+				$form['field_section_training_center']['und']['#default_value'] = $_GET['tid'];
+			}
+			$form['field_section_training_center']['#type'] = 'hidden';
+			//dpm($form);
+		}
+	}
+}
+
+/*
+ * Implements hook_theme_registry_alter().
+ */
+function training_theme_registry_alter(&$theme_registry) {
+	if (isset($theme_registry['quiz_admin_summary'])) {
+    $theme_registry['quiz_admin_summary']['function'] = 'training_quiz_admin_summary';
+	}
+}
+
+// Страница просмотра и оценки результата теста
+function training_quiz_admin_summary($variables) {
+	$quiz = $variables['quiz'];
+  $questions = $variables['questions'];
+  $score = $variables['score'];
+  $summary = $variables['summary'];
+  $rid = $variables['rid'];
+  // To adjust the title uncomment and edit the line below:
+  // drupal_set_title(check_plain($quiz->title));
+  if (!$score['is_evaluated']) {
+    drupal_set_message(t('This quiz has not been scored yet.'), 'warning');
+  }
+  // Display overall result.
+  $output = '';
+  $params = array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score']);
+  $output .= '<div id="quiz_score_possible">' . t('This person got %num_correct of %question_count possible points.', $params) . '</div>' . "\n";
+  $output .= '<div id="quiz_score_percent">' . t('Total score: @score %', array('@score' => $score['percentage_score'])) . '</div>' . "\n";
+
+  // Get the feedback for all questions.
+  require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'quiz') . '/quiz.pages.inc';
+  $report_form = drupal_get_form('quiz_report_form', $questions, TRUE, TRUE, TRUE);
+  $output .= drupal_render($report_form);
+  return $output;
+}
+
+/**
+ * Проверен ли результат теста
+ *
+ * @param $uid
+ *   User id
+ * @param $nid
+ *   Quiz node id
+ * @param $vid
+ *   Quiz node revision id
+ */
+function training_quiz_is_evaluated($uid, $nid, $vid) {
+	$is_evaluated = 1;
+	$results = db_select('quiz_node_results', 'qnr')
+	->condition('qnr.nid', $nid)
+	->condition('qnr.vid', $vid)
+	->condition('qnr.uid', $uid)
+	->fields('qnr')
+	->execute()
+	->fetchAll();
+	foreach ($results as $result) {
+		if ($result->time_end != 0) {
+			$is_evaluated = $result->is_evaluated;
+		}
+	}
+	
+	return $is_evaluated;
+}

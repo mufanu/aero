@@ -1,0 +1,9 @@
+name = LDAP Sync
+description = Синхронизация пользователей с AD
+core = 7.x
+package = "Lightweight Directory Access Protocol"
+dependencies[] = ldap_query
+
+stylesheets[all][] = ldap_sync.css
+
+configure = admin/config/people/ldap/sync

@@ -1,0 +1,6 @@
+name = Quiz for aeroexpress
+description = Надстройка модуля Quiz для Аэроэкспресс.
+core = 7.x
+dependencies[] = quiz
+
+package = Quiz Addon

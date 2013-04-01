@@ -1,0 +1,38 @@
+#training-my-lessons {
+	padding: 0;
+}
+
+#training-my-lessons ul {
+	padding-left: 14px;
+}
+#training-my-lessons li {
+	list-style: none;
+}
+
+#training-my-lessons li .title {
+	color: #3366CC;
+}
+
+#training-my-lessons ul.training-block-item,
+#training-my-lessons ul.training-course-item {
+	display: none;
+}
+
+#training-my-lessons li.training-block-item span.title,
+#training-my-lessons li.training-course-item span.title {
+	cursor: pointer;
+	background: url(trigger.png) no-repeat;
+	height: 17px;
+	display: inline-block;
+	padding-left: 17px;
+}
+
+#training-my-lessons li.expanded .block-title,
+#training-my-lessons ul.training-block-item li.expanded .course-title {
+	background: url(trigger.png) no-repeat scroll 0 -17px!important;
+}
+
+#training-my-lessons span.title:hover {
+	text-decoration: underline;
+}
+	

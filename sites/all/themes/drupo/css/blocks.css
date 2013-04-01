@@ -1,0 +1,395 @@
+/**
+ * @file
+ * Block Styling
+ */
+
+
+.block { /* Block wrapper */
+  margin-bottom: 1.5em;
+}
+
+.block.first { /* The first block in the region */
+}
+
+.block.last { /* The last block in the region */
+}
+
+.block.odd { /* Zebra striping for each block in the region */
+}
+
+.block.even { /* Zebra striping for each block in the region */
+}
+
+h2.block-title { /* Block title */
+}
+
+#block-aggregator-category-1 { /* Block for the latest news items in the first category */
+}
+
+#block-aggregator-feed-1 { /* Block for the latest news items in the first feed */
+}
+
+#block-block-1 { /* First block created with "Add block" link */
+}
+
+#block-blog-recent { /* "Recent blog posts" block */
+}
+
+#block-book-navigation { /* "Book navigation" block for the current book's table of contents */
+}
+
+#block-comment-recent { /* "Recent comments" block */
+}
+
+#block-forum-active { /* "Active forum topics" block */
+}
+
+#block-forum-new { /* "New forum topics" block */
+}
+
+#block-locale-language { /* Language switcher block */
+}
+
+#block-menu-menu-NAME { /* Custom menu block */
+}
+
+#block-node-recent { /* "Recent content" block */
+}
+
+#block-node-syndicate { /* "Syndicate" block for primary RSS feed; see also page.css's .feed-icon */
+}
+
+#block-poll-recent { /* "Most recent poll" block */
+}
+
+#block-poll-recent .text,
+#block-poll-recent .percent {
+	display: inline;
+}
+
+#block-poll-recent .percent,
+#block-poll-recent .links {
+	float: right;
+}
+
+#block-poll-recent .links li {
+	list-style: none;
+}
+
+#block-poll-recent .total {
+	text-align: left;
+}
+
+.poll .bar .foreground {
+	background-color: #666;
+}
+
+
+#block-profile-author-information { /* "Author information" block for the profile of the page's author */
+}
+
+#block-search-form { /* "Search form" block */
+}
+
+#block-shortcut-shortcuts { /* "Shortcuts" block */
+}
+
+#block-statistics-popular { /* "Popular content" block */
+}
+
+#block-system-main-menu { /* "Main menu" block */
+}
+
+#block-system-management { /* "Management" block for Drupal management menu */
+}
+
+#block-system-navigation { /* "Navigation" block for Drupal navigation menu */
+}
+
+#block-system-user-menu { /* "User menu" block for Drupal user menu */
+}
+
+#block-system-help { /* "System help" block */
+}
+
+#block-system-main { /* "Main page content" block */
+}
+
+#block-system-powered-by { /* "Powered by Drupal" block */
+}
+
+#block-user-login { /* "User login form" block */
+}
+
+#block-user-new { /* "Who's new" block for a list of the newest users */
+}
+
+#block-user-online { /* "Who's online" block for a list of the online users */
+}
+
+/*
+ * Region sidebar first
+ */
+.region-sidebar-first .block-title {
+	margin-bottom: 5px;
+}
+
+.region-sidebar-first ul.menu {
+	padding-left: 15px;
+	margin: 0;
+}
+
+.region-sidebar-first ul.menu li {
+	padding: 10px 0;
+	list-style: none;
+}
+
+.region-sidebar-first ul.menu li a {
+	color: #353535;
+}
+
+.region-sidebar-first ul.menu li a:hover {
+	color: #f11d1d;
+}
+
+/*
+ * Region sidebar second
+ */
+.region-sidebar-second .block {
+	border: 1px solid #999;
+	margin: 10px 0;
+}
+
+.region-sidebar-second .block-title {
+	background: #494949;
+	color: #fff;
+	margin: 0;
+	padding: 8px 0;
+	text-align: center;
+}
+
+/*
+ * Front page blocks layout
+ */
+
+.front .block-title,
+.not-logged-in .block-title {
+	font-size: 1.2em;
+	color: #C00;
+	text-transform: uppercase;
+}
+
+.front .block-title a {
+	color: #C00!important;
+	text-decoration: none;
+}
+
+.front .block-title a:hover {
+	text-decoration: underline;
+}
+
+.front-row {
+	margin-bottom: 10px;
+}
+
+.front-block {
+	border: 1px solid #999;
+	display: inline-block;
+	float: left;
+}
+
+.front-block .region {
+	padding: 10px;
+}
+
+.front-block table,
+.front-block ul {
+	margin: 0;
+	padding: 0;
+}
+
+.front-block ul li.leaf {
+	list-style: none;
+	padding: 5px 0;
+}
+
+.front-block .block,
+.front-block p {
+	margin: 0;
+}
+
+#news {
+	width:746px;
+}
+
+#new-users,
+#users-birthday {
+	width: 473px;
+	min-height: 195px;
+}
+
+#important-info,
+#help {
+	width: 200px;
+}
+
+#activity {
+	width: 534px;
+}
+
+
+
+#photo,
+#video,
+#pool {
+	width: 311px;
+}
+
+#news,
+#new-users,
+#important-info,
+#activity,
+#photo,
+#video {
+	margin-right: 10px;
+}
+
+#pool .node-title {
+	font-size: 1em;
+}
+
+#first-row .front-block {
+	height: 220px;
+}
+
+#third-row .front-block {
+	height: 260px;
+}
+
+#fourth-row .front-block {
+	min-height: 213px;
+}
+
+#clock {
+	width: 200px;
+}
+
+/*
+ * default jcarousel styling
+ */
+.jcarousel-skin-default .jcarousel-container-horizontal,
+.jcarousel-skin-default .jcarousel-container-vertical {
+	padding: 0;
+}
+
+.jcarousel-skin-default .jcarousel-item {
+	border: 0;
+}
+
+.jcarousel-skin-default .jcarousel-prev-horizontal {
+	top: -30px;
+	right: 30px;
+	left: auto;
+}
+
+.jcarousel-skin-default .jcarousel-next-horizontal {
+	top: -30px;
+	right: 0;
+}
+
+
+/*
+ * News jcarousel styling
+ */
+#news .jcarousel-skin-default .jcarousel-container-horizontal {
+	width: 726px;
+	height: 170px;
+}
+#news .jcarousel-skin-default .jcarousel-clip-horizontal {
+	width: 726px;
+}
+
+#news .jcarousel-skin-default .jcarousel-item {
+	height: 170px;
+	width: 355px;
+}
+
+#news img,
+#activity img {
+	float: left;
+	margin: 5px 10px 0 0;
+}
+
+#news .views-field-title {
+	margin-bottom: 5px;
+	text-align: left;
+}
+
+#news .views-field-body {
+	text-align: left;
+}
+
+/*
+ * Activity jcarousel styling
+ */
+#activity .jcarousel-skin-default .jcarousel-container-horizontal {
+	width: 514px;
+	height: 205px;
+}
+#activity .jcarousel-skin-default .jcarousel-clip-horizontal {
+	width: 514px;
+}
+
+#activity .jcarousel-skin-default .jcarousel-item {
+	height: 205px;
+	width: 249px;
+}
+
+#activity .views-field-title {
+	margin-bottom: 5px;
+	text-align: left;
+}
+
+#activity .views-field-body {
+	text-align: left;
+}
+
+/*
+ * Header
+ */
+#block-views-users-welcome {
+	margin-left: 20px;
+}
+
+#block-views-users-welcome .block-title {
+	font-size: 1em;
+	font-weight: normal;
+	color: #FFCCCC;
+	text-transform: none;
+}
+
+#block-views-users-welcome .views-field-field-user-full-name {
+	text-transform: uppercase;
+	color: #FFCCCC;
+	font-size: 1.3em;
+}
+
+#block-views-users-welcome .views-field-nothing {
+	margin-top: 5px;
+	text-align: left;
+}
+
+#block-views-users-welcome .views-field-nothing a {
+	color: #FFCCCC;
+}
+
+/*
+ * Help in front page
+ */
+#block-menu-menu-help ul.menu a {
+	text-transform: uppercase;
+}
+
+#block-menu-menu-help ul.menu a:hover {
+	text-decoration: underline;
+}

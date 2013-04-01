@@ -1,0 +1,294 @@
+<?php
+
+define('CURRENT_USERS', 'ldap_sync_current');
+
+define('FIRED_USERS', 'ldap_sync_fired');
+
+module_load_include('php', 'ldap_query', 'LdapQuery.class');
+
+function ldap_sync_menu() {
+	$items['admin/config/people/ldap/sync'] = array(
+		'title' => t('Synchronization'),
+		'page callback' => 'ldap_sync_index',
+		'access arguments' => array('access content'),
+		'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+		'file' => 'ldap_sync.admin.inc',
+	);
+	// Главная страница дистанционных курсов, отображаются блоки
+	$items['sync'] = array(
+		'title' => t('Синхронизация пользователей'),
+		'page callback' => 'ldap_sync_page',
+		'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+	);
+	$items['sync/info'] = array(
+		'title' => t('Синхронизация пользователей'),
+		'page callback' => 'ldap_sync_get_info',
+		'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+	);
+	
+	return $items;
+}
+
+/*
+ * Главная страница модуля синхронизации.
+ */
+function ldap_sync_page() {
+	$output = '';
+	$output .= '<p>Синхронизация пользователей с Active Directory aero-express.ru</p>';
+	$output .= render(drupal_get_form('ldap_sync_form'));
+	return $output;
+}
+
+/*
+ * Кнопка проверки информации
+ */
+function ldap_sync_form($form, &$form_state) {
+	$form['wrapper']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Обновить'),
+		'#submit' => array('ldap_sync_form_submit'),
+  );
+	
+	return $form;
+}
+
+function ldap_sync_form_submit() {
+	drupal_goto('sync/info');
+}
+
+/*
+ * Обращение к АД и сопоставление пользователей АД с пользователями Drupal.
+ */
+function ldap_sync_get_info() {
+	//drupal_add_library('system', 'drupal.collapse');
+	$output = '';
+	// Массив новых пользователей
+	$new_users = array();
+	// Массив пользователей drupal, которые уже существуют.
+	$drupal_users = array();
+	// Запрос к AD через уже созданный запрос в модуле ldap_query
+	$current = variable_get(CURRENT_USERS);
+	$fired = variable_get(FIRED_USERS);
+	$current_query = new LdapQuery($current);
+	$current_results = $current_query->query();
+	$fired_query = new LdapQuery($fired);
+	$fired_results = $fired_query->query();
+	//dpm($fired_results);
+	// Превый элемент показывает количество результатов, он нам не нужен.
+	$current_results = array_slice($current_results, 1);
+	$fired_results = array_slice($fired_results, 1);
+	foreach ($current_results as $current_result) {
+		//dpm($ldap_result);
+		// Имя пользователя, т.е. логин в AD.
+		$name = $current_result['samaccountname'][0];
+		// Атрибут когда была изменена учетная запись пользователя.
+		//$whenchanged = ldap_sync_timestamp($ldap_result['whenchanged'][0]);
+		// Id пользователя drupal, если он уже есть.
+		$drupal_user_id = ldap_sync_get_uid($name);
+		$dn = $current_result['distinguishedname'][0];
+		// distinguishedname - передается в полном виде, нам нужно его разбить на массив по запятым
+		// и получить второй элемент массива - это будет подразделение сотрудника.
+		// Разбиваем строку на массив
+		$department_exploded_array = explode(",", $dn);
+		// Срезаем первый элемент (это CN) и переворачиваем массив
+		$department_reversed_array = array_reverse(array_slice($department_exploded_array, 1));
+		// Срезаем первые два элемента массива - это DC=ru и DC=aero-express.
+		$department_array = array_slice($department_reversed_array, 2);
+		// Выводить будем иерархическую структуру подразделения для сотрудника.
+		$department_output = '';
+		foreach ($department_array as $ou) {
+			$department_output .= $ou . '<br />';
+		}
+		// Подразделение где находиться сотрудник
+		$department = substr($department_exploded_array[1], 3);
+		//dpm($department);
+		$group_id = ldap_sync_get_gid($department);
+		// Есть ли данный сотрудник в БД {users} потрала?
+		if ($drupal_user_id) {
+			ldap_sync_create_user($current_result, $group_id, $drupal_user_id);
+			//$output .= ldap_sync_create_user($current_result, $group_id, $drupal_user_id) . '<br />';
+		} else {
+			//$output .= '<b>Новые пользователи:</b><br />';
+			ldap_sync_create_user($current_result, $group_id);
+			//$output .= ldap_sync_create_user($current_result, $group_id) . '<br />';
+		}
+	}
+	
+	// Блокируем уволенных сотрудников
+	foreach ($fired_results as $fired_result) {
+		$name = $fired_result['samaccountname'][0];
+		$drupal_user_id = ldap_sync_get_uid($name, 1);
+		if ($drupal_user_id) {
+			$output .= '<span style="color:red">' . ldap_sync_dis_user($drupal_user_id) . '</span>';
+		}
+	}	
+	
+	return $output;
+}
+
+/*
+ * Создать нового пользователя
+ * Пока не создает пользователя, только собирает в массив.
+ */
+function ldap_sync_create_user($ldapaccount, $gid, $uid = FALSE) {
+	if ($uid) {
+		$account = user_load($uid);
+	} else {
+		$account = new stdClass();
+	}
+	
+	$name = $ldapaccount['samaccountname'][0] ;
+	$mail = isset($ldapaccount['mail'][0]) ? $ldapaccount['mail'][0] : '';
+	$givenname = isset($ldapaccount['givenname'][0]) ? $ldapaccount['givenname'][0] : '';
+	$phone = isset($ldapaccount['physicaldeliveryofficename'][0]) ? $ldapaccount['physicaldeliveryofficename'][0] : '';
+	$position = isset($ldapaccount['title'][0]) ? $ldapaccount['title'][0] : '';
+	$surname = isset($ldapaccount['sn'][0]) ? $ldapaccount['sn'][0] : '';
+	$birthday = isset($ldapaccount['pager'][0]) ? $ldapaccount['pager'][0] : '';
+	$fullname = isset($ldapaccount['displayname'][0]) ? $ldapaccount['displayname'][0] : '';
+	$office = isset($ldapaccount['department'][0]) ? $ldapaccount['department'][0] : '';
+	$mobile = isset($ldapaccount['mobile'][0]) ? $ldapaccount['mobile'][0] : '';
+	$getjob = isset($ldapaccount['whencreated'][0]) ? $ldapaccount['whencreated'][0] : '';
+	if (isset($ldapaccount['manager'][0])) {
+		$manager = $ldapaccount['manager'][0];
+		//$manager = explode(",", $ldapaccount['manager'][0]);
+		//$manager = substr($manager[0], 3);
+	} else {
+		$manager = '';
+	}
+	
+	$account->name = $name;
+	$account->status = '1';
+	$account->mail = $mail;
+	$account->field_user_name['und'][0]['value'] = $givenname;
+	$account->field_user_phone['und'][0]['value'] = $phone;
+	$account->field_user_position['und'][0]['value'] = $position;
+	$account->field_user_surname['und'][0]['value'] = $surname;
+	$account->field_user_birthday['und'][0]['value'] = $birthday;
+	$account->field_user_full_name['und'][0]['value'] = $fullname;
+	$account->field_user_office['und'][0]['value'] = $office;
+	$account->field_user_mobile['und'][0]['value'] = $mobile;
+	$account->field_user_get_job['und'][0]['value'] = $getjob;
+	$account->field_user_manager['und'][0]['value'] = $manager;
+	if ($gid) {
+		$account->group_audience['und'][0]['gid'] = $gid;
+	}
+	
+	user_save($account);
+	//return 	$fullname . ' <b>' . $manager . '</b>';
+}
+
+function ldap_sync_dis_user($uid) {
+	
+	$account = user_load($uid);
+	
+	$account->status = '0';
+	
+	user_save($account);
+	
+	return $account->field_user_full_name['und'][0]['value'];
+}
+
+/*
+ * Кнопка импорта новых ползователей
+ */
+function ldap_sync_import_form($form, &$form_state) {
+	$form['newusers'] = array (
+		'#type' => 'value',
+		'#value' => $new_users2,
+	);
+	
+	$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Импорт'),
+		'#submit' => array('ldap_sync_create_user'),
+  );
+	
+	return $form;
+}
+
+
+/*
+ * Импорт новых пользователей
+ */
+function ldap_sync_import_form_submit() {
+	drupal_goto('user/sync/import');
+}
+
+
+/*
+ * Функция записывает информацию в {users_sync}
+ * $op = 'update' or 'insert'.
+ */
+function ldap_sync_table_save($user_object, $op) {
+	if ($op == 'update') {
+		$update = db_update('ldap_sync')
+		->condition('uid', $user_object['uid'])
+		->fields(array(
+			'name' => $user_object['name'],
+			'whenchanged' => $user_object['whenchanged'],
+		))
+		->execute();
+	} elseif ($op == 'insert') {
+		$insert = db_insert('ldap_sync')
+		->fields(array(
+			'uid' => $user_object['uid'],
+			'name' => $user_object['name'],
+			'whenchanged' => $user_object['whenchanged'],
+		))
+		->execute();
+	}
+}
+
+/*
+ * Функция получает uid пользователя по его имени.
+ */
+function ldap_sync_get_uid($name, $status = FALSE) {
+	if ($status) {
+		$condition = db_and()
+		->condition('u.status', $status)
+		->condition('u.name', $name);
+	} else {
+		$condition = db_and()
+		->condition('u.name', $name);
+	}
+	$query = db_select('users', 'u')
+	->condition($condition)
+	->fields('u', array('uid'))
+	->execute()
+	->fetchField();
+	
+	return $query;
+}
+
+/*
+ * Функция переводить время в unixtime.
+ */
+function ldap_sync_timestamp($time) {
+	$temp = substr($time, 0, 14);
+	$year = substr($temp, 0, 4);
+	$month = substr($temp, 4, 2);
+	$day = substr($temp, 6, 2);
+	$hour = substr($temp, 8, 2);
+	$minute = substr($temp, 10, 2);
+	$second = substr($temp, 12, 2);
+	
+	$timestamp = mktime($hour, $minute, $second, $month, $day, $year);
+	
+	return $timestamp;
+}
+
+/*
+ * Получить gid группы
+ */
+function ldap_sync_get_gid($label) {
+	$query = db_select('og', 'o')
+	->condition('o.label', $label)
+	->fields('o', array('gid'))
+	->execute()
+	->fetchField();
+	
+	return $query;
+}
