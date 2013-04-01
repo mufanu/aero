@@ -50,20 +50,15 @@
 
 <?php
 	$path = 'node/add/activity';
-	$mlid = db_select('menu_links', 'ml')
-	->condition('ml.link_path', $path)
-	->fields('ml', array('mlid'))
-	->execute()
-	->fetchField();
-	$link = menu_link_load($mlid);
-	$l = l('', $link['path'], array('attributes' =>array('class' => 'add-link', 'title' => $link['description'])));
+  $menu = menu_get_item($path);
+  $link = l('', $menu['href'], array('attributes' =>array('class' => 'add-link', 'title' => $menu['description']), 'query' => drupal_get_destination()));
 ?>
 
 <div id="<?php print $block_html_id; ?>" class="<?php print $classes; ?>"<?php print $attributes; ?>>
 
   <?php print render($title_prefix); ?>
   <?php if ($title): ?>
-    <h2<?php print $title_attributes; ?>><?php print $title; ?><?php if($link['access']) {print $l;} ?></h2>
+    <h2<?php print $title_attributes; ?>><?php print $title; ?><?php if($link['access']) {print $link;} ?></h2>
   <?php endif; ?>
   <?php print render($title_suffix); ?>
 
