@@ -615,15 +615,15 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 			$form['answer']['correct_answer']['#type'] = 'textarea';
 			$form['answer']['correct_answer_evaluation']['#default_value'] = 3;
 			$form['answer']['correct_answer']['#description'] = 'Укажите правильный ответ (будет отображаться при проверке теста).';
-			$form['add_directly']['#type'] = 'hidden';
+      unset($form['add_directly']['#group']);
+      $form['add_directly']['#disabled'] = TRUE;
+      $form['add_directly']['new']['#type'] = 'hidden';
 		}
-		// Форма добавления типа материала "Вопрос с множественным выбором".
+		// Форма добавления типа материала "Вопрос с автоматической проверкой".
 		if ($form_id == 'multichoice_node_form') {
-			if (isset($_GET['quiz_nid']) && isset($_GET['quiz_vid'])) {
-				$form['add_directly']['latest']['#default_value'] = array($_GET['quiz_nid'] . '-' . $_GET['quiz_vid']);
-			}			
-			$form['add_directly']['#type'] = 'hidden';
-			//dpm($form);
+      unset($form['add_directly']['#group']);
+      $form['add_directly']['#disabled'] = TRUE;
+      $form['add_directly']['new']['#type'] = 'hidden';
 		}
 		// Форма добавления Урока.
 		if ($form_id == 'lesson_node_form') {

@@ -1,0 +1,7 @@
+name = Drupo
+description = Drupo pre-configured profile.
+version = VERSION
+core = 7.x
+dependencies[] = block
+dependencies[] = dblog
+
