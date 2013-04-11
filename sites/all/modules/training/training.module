@@ -87,25 +87,16 @@ function training_menu_alter(&$items) {
  *   Node object.
  */
 function training_node_access($op, $node) {
-	//dpm($op);
-	//dpm($node);
-	//$node_obj = is_object($node) ? $node->nid : $node;
-	
-	if (is_object($node)) {
-		if ($node->type == 'lesson') {
-			return node_access('view', $node) && user_access('access content') && training_node_access_validate($node->nid) === TRUE;
-		}
-		if ($node->type == 'quiz') {
-		return node_access('view', $node) && user_access('access content') && training_quiz_take_access_validate($node) === TRUE;
+  if (is_object($node)) {
+    if ($node->type == 'lesson') {
+      return node_access('view', $node) && user_access('access content') && training_node_access_validate($node->nid) === TRUE;
+    }
+    if ($node->type == 'quiz') {
+      return node_access('view', $node) && user_access('access content') && training_quiz_take_access_validate($node) === TRUE;
+    }
   }
-  }
-	/*
-	if ($node->type == 'quiz') {
-		return node_access($op, $node) && user_access('access content') && training_quiz_take_validate($node) === TRUE;
-  }
-	*/
-	
-	return node_access($op, $node);	
+
+  return node_access($op, $node);
 }
 
 /*
@@ -115,18 +106,19 @@ function training_node_access($op, $node) {
  *   Node ID.
  */
 function training_node_access_validate($nid) {
-	// Флаги - Подписаться и Изучил урок
-	$flag_signup = flag_get_flag('signup');
-	$flag_learned = flag_get_flag('learned');
-	// Подписан ли на урок
-	$is_signup = $flag_signup->is_flagged($nid);
-	// Изучил ли урок
-	$is_learned = $flag_learned->is_flagged($nid);
-	// Если подписан на урок и еще не изучил, то доступ открыт
-	if (($is_signup) && (!$is_learned)) {
-		return TRUE;
-	}
-	return FALSE;
+  // Флаги - Подписаться и Изучил урок
+  $flag_signup = flag_get_flag('signup');
+  $flag_learned = flag_get_flag('learned');
+  // Подписан ли на урок
+  $is_signup = $flag_signup->is_flagged($nid);
+  // Изучил ли урок
+  $is_learned = $flag_learned->is_flagged($nid);
+  // Если подписан на урок и еще не изучил или если является админом, то доступ открыт
+  if ((($is_signup) && (!$is_learned)) || user_access('administer training')) {
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 /**
@@ -241,19 +233,19 @@ function training_permission() {
  * Получить список уроков
  */
 function training_get_lessons($id) {
-	global $user;
-	$uid = $user->uid;
-	$id = arg(2);
-	$rows = '';
-	$test_is_eval = 1;
-	$test_vid = 0;
-	// Флаги - Подписаться и Изучил урок
-	$flag_signup = flag_get_flag('signup');
-	$flag_learned = flag_get_flag('learned');
-	$output = '';
-	// Сдан ли тест
-	$is_passed_quiz = 0;
-	// Если администратор, то добавляем ссылку "Добавить урок".
+  global $user;
+  $uid = $user->uid;
+  $id = arg(2);
+  $rows = '';
+  $test_is_eval = 1;
+  $test_vid = 0;
+  // Флаги - Подписаться и Изучил урок
+  $flag_signup = flag_get_flag('signup');
+  $flag_learned = flag_get_flag('learned');
+  $output = '';
+  // Сдан ли тест
+  $is_passed_quiz = 0;
+  // Если администратор, то добавляем ссылку "Добавить урок".
 	if (IS_ADMIN) {
 		$destination = drupal_get_destination();
 		$query = array('tid' => $id) + $destination; // Возможно удалить нужно!!!
