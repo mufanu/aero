@@ -169,7 +169,21 @@
         	<?php print render($page['forth_row_video']); ?>
         </div>
         <div id="pool" class="front-block">
-        	<?php print render($page['forth_row_pool']); ?>
+          <?php $forth_row_poll = render($page['forth_row_pool']); ?>
+          <?php if ($forth_row_poll): ?>
+          <?php print $forth_row_poll; ?>
+          <?php else: ?>
+            <?php
+              $path = 'node/add/poll';
+              $menu = menu_get_item($path);
+              $link = l('', $menu['href'], array('attributes' =>array('class' => 'add-link', 'title' => $menu['description']), 'query' => drupal_get_destination()));
+            ?>
+            <div class="region region-forth-row-pool">
+              <div id="block-poll-recent" class="block block-poll contextual-links-region first last odd" role="complementary">
+                <h2 class="block-title">Опрос<?php if($link['access']) {print $link;} ?></h2>
+              </div>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
       
