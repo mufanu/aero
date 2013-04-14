@@ -22,7 +22,7 @@
  * the view is modified.
  */
 ?>
-<?php $status = $row->_field_data['nid']['entity']->status; ?>
+<?php $status = $row->node_status; ?>
 <?php if($status == 0): ?>
   <span class="course-unpublished"><?php print $output; ?> (Снято с публикации)</span>
 <?php else: ?>
