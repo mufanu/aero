@@ -75,7 +75,7 @@ function training_menu_alter(&$items) {
  */
 
 /*
- * Релизация доступа к уроку и информациионой странице теста
+ * Релизация доступа к курсам, урокам и информациионой странице теста
  *
  * @param $op
  *   The operation to be performed on the node. Possible values are:
@@ -213,20 +213,28 @@ function training_dates_page($term){
  * Permissions
  */
 function training_permission() {
-	return array(
+  return array(
     'administer training' => array(
       'title' => t('Administer training'), 
       'description' => t('Allow users to administer training center for all users'),
     ),
-		'administer drivers' => array(
+	'administer drivers' => array(
       'title' => t('Administer drivers'), 
       'description' => t('Allow users to administer training center for drivers'),
     ),
-		'access drivers' => array(
+	'access drivers' => array(
       'title' => t('Access drivers'), 
       'description' => t('Allow users to access training center for drivers'),
     ),
-	);
+    'publish block' => array(
+      'title' => t('Publish Blocks'),
+      'description' => t('Allow users to publish node type "block"'),
+    ),
+    'publish course' => array(
+      'title' => t('Publish Courses'),
+      'description' => t('Allow users to publish node type "course"'),
+    ),
+  );
 }
 
 /*
@@ -354,6 +362,144 @@ function training_get_lessons($id) {
 	}
 	
 	return $output;
+}
+
+/**
+ * Получить список уроков
+ * @param $nid
+ *  $nid - course id
+ */
+function training_get_lessons2($nid) {
+  global $user;
+  $uid = $user->uid;
+  $rows = '';
+  $test_is_eval = 1;
+  $test_vid = 0;
+  // Флаги - Подписаться и Изучил урок
+  $flag_signup = flag_get_flag('signup');
+  $flag_learned = flag_get_flag('learned');
+  $output = '';
+  $info = '';
+  // Добавляем ссылку "Добавить урок", право доступа дается на странице настройки доступов.
+  $path = 'node/add/lesson';
+  $menu = menu_get_item($path);
+  $link = l('Добавить урок', $menu['href'], array('attributes' =>array('title' => $menu['description']), 'query' => array('course_id' => $nid) + drupal_get_destination()));
+  if ($menu['access']) {
+    $output .= $link;
+  }
+  // Получаем список уроков курса
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_course2', 'f', 'f.entity_id = n.nid');
+  $query->condition('f.field_course2_target_id', $nid);
+  $query->fields('n');
+  $results = $query->execute()->fetchAll();
+  $course_is_evaluated = training_course_is_evaluated($results);
+  if ($course_is_evaluated) {
+    $course = node_load($nid);
+    $info = render($course->body['ru'][0]['safe_value']);
+  }
+  // Для каждого урока
+  foreach ($results as $key => $result) {
+    // Получеам id теста из БД
+    $quiz_nid = training_get_quiz($result->nid);
+    // Записываем id теста в массив с ключами $key
+    $quiz_nids[$key] = $quiz_nid;
+    // Подписан ли на урок
+    $is_signup = $flag_signup->is_flagged($result->nid);
+    // Изучил ли урок
+    $is_learned = $flag_learned->is_flagged($result->nid);
+    $flag_object = training_get_flag_content($result->nid, $flag_signup->fid, $uid);
+    // Если подписан на урок
+    if ($is_signup) {
+      $signup = t('Дата подписки<br />') . date(DATE_FORMAT, $flag_object->timestamp);
+      // Если изучил
+      if ($is_learned) {
+        $title = $result->title;
+        // Получаем результат теста
+        $quiz_results = db_select('quiz_node_results', 'q')
+            ->condition('q.nid', $quiz_nid)
+            ->condition('q.uid', $uid)
+            ->fields('q', array('vid', 'time_end', 'is_evaluated'))
+            ->execute()
+            ->fetchAll();
+        $test_time_end = 0;
+        foreach ($quiz_results as $item) {
+          $test_vid = $item->vid;
+          $test_time_end = $item->time_end;
+          $test_is_eval = $item->is_evaluated;
+        }
+        // Сдан ли данный тест
+        $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
+        if (($is_passed_quiz) && ($test_is_eval)) {
+          $quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
+        } else {
+          // Проверен ли тест
+          if (!$test_is_eval) {
+            $quiz = 'Тест не оценен';
+          } elseif ($quiz_nid) {
+            $quiz = l('Пройти тест', 'node/' . $quiz_nid);
+          } else {
+            $quiz = 'Тест отсутствует';
+          }
+        }
+        // Не изучил
+      } else {
+        $title = l($result->title, 'node/' . $result->nid);
+        $quiz = t('Изучите урок');
+      }
+      // Не подписан
+    } else {
+      $title = $result->title;
+      // Сдан ли предыдущий тест
+      if ($key == 0) {
+        $is_passed_prev_quiz = TRUE;
+      } else {
+        $is_passed_prev_quiz = quiz_is_passed($uid, $quiz_nids[$key - 1], $test_vid);
+      }
+      if ((($is_passed_prev_quiz) && ($test_is_eval))|| ($key == 0)) {
+        $signup = flag_create_link('signup', $result->nid);
+      } else {
+        $signup = '';
+      }
+      $quiz = '';
+    }
+
+    $title .= training_admin_links($result->nid, $quiz_nid);
+
+    // Названия заголовков таблицы
+    $header = array(
+      'title' => 'Название урока',
+      'signup' => 'Подписка',
+      'quiz' => 'Тестирование',
+    );
+
+    $rows[] = array(
+      'title' => $title,
+      'signup' => $signup,
+      'quiz' => $quiz,
+    );
+  }
+  // Если есть уроки
+  if ($rows) {
+    $output .= theme('table', array(
+      'header' => $header,
+      'rows' => $rows,
+      'attributes' => array('id' => 'training-table'),
+    ));
+  } else {
+    $output .= t('<div>У данного курса нет уроков.</div>');
+  }
+
+  return $info . $output;
+}
+
+function training_preprocess_node(&$variables) {
+  $nid = $variables['nid'];
+  $type = $variables['type'];
+  if ($type == 'course') {
+    $variables['content'] = training_get_lessons2($nid);
+  }
+  //dpm($variables);
 }
 
 // Получить список документов для машинистов
@@ -537,6 +683,12 @@ function training_get_flag_content($nid, $fid, $uid) {
 	return $result;
 }
 
+/**
+ * Получаем последний результат теста
+ * @param $uid
+ * @param $quiz_id
+ * @return mixed
+ */
 function training_get_quiz_result($uid, $quiz_id) {
 	$results = db_select('quiz_node_results', 'q')
 	->condition('q.nid', $quiz_id)
@@ -547,7 +699,7 @@ function training_get_quiz_result($uid, $quiz_id) {
 
 	return $results;
 }
-/*
+/**
  * Переопределяем форму добавления материалов.
  */
 function training_form_alter(&$form, &$form_state, $form_id) {
@@ -556,7 +708,7 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 	//dpm($form);
 	//dpm($form_state);
 	if (!($user->uid == 1)) {
-		// Форма добавления терминов
+		// Форма добавления терминов. Надо будет удалить после переделки Инструктажа машинистов.
 		if ($form_id == 'taxonomy_form_term') {
 			$form['relations']['parent']['#title'] = 'Родительский элемент';
 			$form['relations']['parent']['#disabled'] = TRUE;
@@ -565,9 +717,41 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 			if (isset($_GET['tid'])) {
 				$form['relations']['parent']['#default_value'] = $_GET['tid'];
 			}
-		}		
-		
-		// Форма добавления теста
+		}
+
+    // Форма Блока
+    if ($form_id == 'block_node_form') {
+      $form['options']['#access'] = user_access('publish block');
+      $form['options']['#type'] = '';
+      unset($form['options']['promote']);
+      unset($form['options']['sticky']);
+    }
+
+    // Форма Курса
+    if ($form_id == 'course_node_form') {
+      $form['options']['#access'] = user_access('publish course');
+      $form['options']['#type'] = '';
+      unset($form['options']['promote']);
+      unset($form['options']['sticky']);
+      $form['field_block']['#disabled'] = TRUE;
+      if (isset($_GET['block_id'])) {
+        $form_state['block_id'] = $_GET['block_id'];
+      }
+      if (isset($form_state['block_id'])) {
+        $form['field_block']['und']['#default_value'] = $form_state['block_id'];
+      }
+    }
+
+    // Форма Урока
+    if ($form_id == 'lesson_node_form') {
+      $form['title']['#description'] = 'Название урока нужно вводить в формате <b style="color:red">Урок 1. Название урока</b>!';
+      $form['field_course2']['#disabled'] = TRUE;
+      if (isset($_GET['course_id'])) {
+        $form['field_course2']['und']['#default_value'] = $_GET['course_id'];
+      }
+    }
+
+		// Форма Теста
 		if ($form_id == 'quiz_node_form') {
 			// Если добавляем тест
 			if (isset($_GET['lid'])) {
@@ -579,13 +763,13 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 				$form['edit_questions']['#markup'] = l(t('Edit questions'), 'node/' . arg(1) . '/questions', array('query' => drupal_get_destination()));
 			}
 			// Скрываем некоторые поля
+      $form['field_lesson']['#disabled'] = TRUE;
 			$form['quiz_availability']['#type'] = 'hidden';
 			$form['taking']['allow_jumping']['#type'] = 'hidden';
-			$form['body']['#type'] = 'hidden';
-			$form['field_lesson']['#type'] = 'hidden';
+
 			// Меняем вид
 			$form['taking']['#type']['#collapsible'] = FALSE;
-			$form['taking']['addons']['#collapsible'] = FALSE;
+			$form['taking']['addons']['#type'] = '';
 			// Удаляем ненужные элементы.
 			unset($form['remember_settings']);
 			unset($form['summaryoptions']);
@@ -600,6 +784,7 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 			unset($form['taking']['feedback']);
 			unset($form['taking']['multiple_takes']);
 		}
+
 		// Стандартная форма вывода результатов теста
 		if ($form_id == 'quiz_results_manage_results_form') {
 			//dpm($form);
@@ -624,14 +809,7 @@ function training_form_alter(&$form, &$form_state, $form_id) {
       $form['add_directly']['#disabled'] = TRUE;
       $form['add_directly']['new']['#type'] = 'hidden';
 		}
-		// Форма добавления Урока.
-		if ($form_id == 'lesson_node_form') {
-			$form['title']['#description'] = 'Название урока нужно вводить в формате <b style="color:red">Урок 1. Название урока</b>!';
-			$form['field_course']['#type'] = 'hidden';
-			if (isset($_GET['tid'])) {
-				$form['field_course']['und']['#default_value'] = $_GET['tid'];
-			}
-		}
+
 		// Форма добавления Документа.
 		if ($form_id == 'doc_for_drivers_node_form') {
 			$form['title']['#description'] = 'Введите название документа';
@@ -668,10 +846,14 @@ function training_form_alter(&$form, &$form_state, $form_id) {
 			$form['field_section_training_center']['#type'] = 'hidden';
 			//dpm($form);
 		}
+
+      if ($form_id == 'quiz_question_answering_form') {
+        //dpm($form);
+      }
 	}
 }
 
-/*
+/**
  * Implements hook_theme_registry_alter().
  */
 function training_theme_registry_alter(&$theme_registry) {
@@ -731,4 +913,40 @@ function training_quiz_is_evaluated($uid, $nid, $vid) {
 	}
 	
 	return $is_evaluated;
+}
+
+/**
+ * Пройден ли курс
+ * На входе массив nid уроков данного курса.
+ * На выходе true/false
+ */
+function training_course_is_evaluated ($nids) {
+  global $user;
+  if ($nids) {
+    $last_lesson_id = $nids[count($nids)-1]->nid;
+    $qid = training_get_quiz($last_lesson_id);
+    $result = training_get_quiz_result($user->uid, $qid);
+    if ($result) {
+      $quiz_is_passed = quiz_is_passed($user->uid, $qid, $result->vid);
+      return $quiz_is_passed;
+    }
+  }
+  
+  return FALSE;
+}
+
+/**
+ * Получить id теста для урока
+ * @param $nid
+ *  Lesson id
+ * @return $qid
+ */
+function training_get_quiz($lid) {
+  $qid = db_select('field_data_field_lesson', 'f')
+  ->condition('f.field_lesson_target_id', $lid)
+  ->fields('f', array('entity_id'))
+  ->execute()
+  ->fetchField();
+
+  return $qid;
 }
