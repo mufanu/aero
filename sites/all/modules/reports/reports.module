@@ -1,0 +1,158 @@
+<?php
+
+function reports_menu() {
+  $items['reports'] = array(
+    'title' => 'Отчеты',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('reports_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ * @return mixed
+ */
+function reports_form($form, &$form_state) {
+  if (isset($_GET['direction'])) {
+    $nid = $_GET['direction'];
+  }
+  $directions = reports_get_directions();
+
+  $form['direction'] = array(
+    '#type' => 'select',
+    '#title' => t('Направление'),
+    '#options' => $directions,
+    '#ajax' => array(
+      'callback' => 'reports_form_reports_form_alter',
+      'wrapper' => 'submit2',
+      'method' => 'replace',
+      'effect' => 'fade',
+    ),
+  );
+
+  $form['direction2'] = array(
+    '#type' => 'select',
+    '#title' => t('Направление'),
+    '#options' => $directions,
+    '#disabled' => TRUE,
+  );
+
+  $form['wrapper'] = array(
+    '#prefix' => '<div id="submit">',
+    '#suffix' => '</div>',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Сформировать'),
+  );
+
+  if (isset($_GET['direction'])) {
+    $form['table'] = array(
+      '#markup' => reports_output($nid),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function reports_form_submit($form, &$form_state) {
+  $form_state['redirect'] = array(
+    'reports',
+    array(
+      'query' => array(
+        'direction' => $form_state['input']['direction_'],
+      ),
+    ),
+  );
+}
+
+function reports_form_reports_form_alter($form, &$form_state) {
+  return $form['direction2']['#disabled'] = FALSE;
+  //$form_state['direction2']['rebuild'] = TRUE;
+
+}
+
+/**
+ * @return array
+ */
+function reports_get_directions() {
+  $query = db_select('node', 'n')
+    ->condition('n.type', 'direction')
+    ->fields('n')
+    ->execute()
+    ->fetchAll();
+
+  foreach ($query as $direction) {
+    $directions[$direction->nid] = $direction->title;
+  }
+
+  return $directions;
+}
+
+/**
+ * @param $nid
+ */
+function reports_get_docs($nid) {
+  $query = db_select('field_data_field_direction', 'f');
+  $query->join('node', 'n', 'f.entity_id = n.nid');
+  $query->condition('f.field_direction_target_id', $nid);
+  $query->fields('n');
+  $result = $query->execute()->fetchAll();
+
+  dpm($result);
+
+  return $result;
+}
+
+function reports_output($nid) {
+  $data = reports_get_docs($nid);
+
+  //Дальше создаем таблицу и выводим полученные данные
+  // Создаем   заголовок таблицы
+  $caption = t('Отчет');
+  // Создаем заголовки столбцов
+  $header = array(
+    // Первый столбец
+    array(
+      'data' => t('Документ'),
+    ),
+    array(
+      'data' => t('Количество подписавщихся'),
+    ),
+    array(
+      'data' => t('Количество сдавших тест'),
+    ),
+  );
+
+  foreach ($data as $item) {
+    $rows[] = array(
+      array(
+        'data' => $item->title,
+      )
+    );
+  }
+
+  $output = theme('table', array(
+      // Шапка таблицы
+      'header' => $header,
+      // Тело таблицы
+      'rows' => $rows,
+      // Заголовок таблицы
+      'caption' => $caption,
+      // Атрибуты таблицы
+      'attributes' => array('width' => '100%')
+    )
+  );
+
+  return $output;
+}
