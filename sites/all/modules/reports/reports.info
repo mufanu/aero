@@ -1,5 +1,5 @@
 name = Training center reports
-description = Отчеты для Учебного центра
+description = 3 типа отчета для Учебного центра
 core = 7.x
 
 dependencies[] = date
