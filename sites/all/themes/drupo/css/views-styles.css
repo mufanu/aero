@@ -488,26 +488,26 @@
 /*
  * Training tables styles
  */
-.view-blocks thead tr,
-.view-blocks tbody tr {
+.view-table thead tr,
+.view-table tbody tr {
 	border-top: 1px solid #ccc;
 }
 
-.view-blocks thead th {
+.view-table thead th {
 	padding: 5px;
 	background: #efefef;
 }
 
-.view-blocks tbody td {
+.view-table tbody td {
 	border: 0;
 	padding: 10px 5px;
 }
 
-.view-blocks tr,
-.view-blocks td.active {
+.view-table tr,
+.view-table td.active {
 	background: #fff;
 }
 
-.view-blocks .training-term-name {
+.view-table .training-term-name {
 	width: 575px;
 }

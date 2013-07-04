@@ -38,36 +38,61 @@ define('DATE_FORMAT', 'd.m.Y - H:i');
  * Imlements hook_menu().
  */
 function training_menu() {
-	// Страница администрирования
-	$items['admin/training'] = array(
-		'title' => 'Система обучения',
-		'page callback' => 'training_admin_page',
-		'access arguments' => array('administer training'),
-		'type' => MENU_NORMAL_ITEM,
-		'file' => 'training.admin.inc',
-	);
-	// Путь администрирования, пока блоки и курсы добавляются через этот путь
-	// после переделки удалить!!!
-	$items['training-center/learning/admin'] = array(
-		'title' => 'Администрирование',
-		'page callback' => 'training_admin',
-		'access arguments' => array('administer training'), 
+  // Страница администрирования
+  $items['admin/training'] = array(
+    'title' => 'Система обучения',
+    'page callback' => 'training_admin_page',
+    'access arguments' => array('administer training'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'training.admin.inc',
+  );
+  // Путь администрирования, пока блоки и курсы добавляются через этот путь
+  // после переделки удалить!!!
+  $items['training-center/learning/admin'] = array(
+    'title' => 'Администрирование',
+    'page callback' => 'training_admin',
+    'access arguments' => array('administer training'),
     'type' => MENU_CALLBACK,
-		'file' => 'training.admin.inc',
-	);
-	
-	return $items;
+    'file' => 'training.admin.inc',
+  );
+
+  $items['training-center/drivers'] = array(
+    'access callback' => FALSE,
+  );
+
+  return $items;
 }
 
 // Переопределяем страницу термина
 function training_menu_alter(&$items) {
-	$item =	&$items['taxonomy/term/%taxonomy_term'];
-	$item['page callback'] = '_training_term_page';
-	$item['page arguments'] = array(2);
-	// Переопределяем права доступа к тесту
-	$items['node/%node/take']['access callback'] = 'training_quiz_take_access';
-	// Переопределяем права доступа
-	$items['node/%node']['access callback'] = 'training_node_access';
+  $item =	& $items['taxonomy/term/%taxonomy_term'];
+  $item['page callback'] = '_training_term_page';
+  $item['page arguments'] = array(2);
+  // Переопределяем права доступа к тесту
+  $items['node/%node/take']['access callback'] = 'training_quiz_take_access';
+  // Переопределяем права доступа
+  $items['node/%node']['access callback'] = 'training_node_access';
+  // Переопределяем функцию вывода результатов теста
+  $items['user/quiz/%/userresults']['page callback'] = 'training_quiz_user_results';
+  // Переопределяем доступ к просмотру результата теста
+  $items['user/quiz/%/userresults']['access callback'] = 'training_quiz_access_my_result';
+}
+
+/**
+ * Helper function to determine if a user has access to view a specific quiz result.
+ *
+ * @param int $rid
+ *  Result id
+ * @return boolean
+ *  True if access, false otherwise
+ */
+function training_quiz_access_my_result($rid) {
+  global $user;
+  if (user_access('view own quiz results')) {
+    return true;
+  }
+
+  return false;
 }
 
 /*
@@ -89,14 +114,54 @@ function training_menu_alter(&$items) {
 function training_node_access($op, $node) {
   if (is_object($node)) {
     if ($node->type == 'lesson') {
-      return node_access('view', $node) && user_access('access content') && training_node_access_validate($node->nid) === TRUE;
+      return node_access('view', $node) && training_node_access_validate($node->nid) === TRUE;
+      //return node_access('view', $node) && user_access('access content') && training_node_access_validate($node->nid) === TRUE;
     }
     if ($node->type == 'quiz') {
-      return node_access('view', $node) && user_access('access content') && training_quiz_take_access_validate($node) === TRUE;
+      return node_access('view', $node) && training_quiz_take_access_validate($node) === TRUE;
+      //return node_access('view', $node) && user_access('access content') && training_quiz_take_access_validate($node) === TRUE;
+    }
+    if ($node->type == 'direction') {
+      return node_access('view', $node) && training_drivers_access($node->nid);
     }
   }
 
   return node_access($op, $node);
+}
+
+/**
+ * Реализация доступа к инструктажу машинистов
+*/
+function training_drivers_access($nid) {
+  global $user;
+  // Получаем id группы
+  $query = db_select('users', 'u');
+  $query->join('og_membership', 'om', 'u.uid=om.etid');
+  $query->condition('u.uid', $user->uid);
+  $query->fields('om', array('gid'));
+  $gid = $query->execute()->fetchField();
+  // Доступ к Все направления МАУ
+  if (($nid == 731) && (($gid == 144) || ($gid == 145) || ($gid == 146))) {
+    return TRUE;
+  }
+  // Доступ для Шереметьево
+  if (($nid == 732) && ($gid == 146)) {
+    return TRUE;
+  }
+  // Доступ для Внуково
+  if (($nid == 733) && ($gid == 144)) {
+    return TRUE;
+  }
+  // Доступ для Домодедово
+  if (($nid == 734) && ($gid == 145)) {
+    return TRUE;
+  }
+  // Доступ для Администратора машинистов
+  if (user_access('administer drivers')) {
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 /*
@@ -222,10 +287,6 @@ function training_permission() {
       'title' => t('Administer drivers'), 
       'description' => t('Allow users to administer training center for drivers'),
     ),
-	'access drivers' => array(
-      'title' => t('Access drivers'), 
-      'description' => t('Allow users to access training center for drivers'),
-    ),
     'publish block' => array(
       'title' => t('Publish Blocks'),
       'description' => t('Allow users to publish node type "block"'),
@@ -233,6 +294,14 @@ function training_permission() {
     'publish course' => array(
       'title' => t('Publish Courses'),
       'description' => t('Allow users to publish node type "course"'),
+    ),
+    'publish date' => array(
+      'title' => t('Publish Dates'),
+      'description' => t('Allow users to publish node type "date"'),
+    ),
+    'publish docs' => array(
+      'title' => t('Publish Docs'),
+      'description' => t('Allow users to publish node type "doc_for_drivers"'),
     ),
   );
 }
@@ -499,121 +568,131 @@ function training_preprocess_node(&$variables) {
   if ($type == 'course') {
     $variables['content'] = training_get_lessons2($nid);
   }
-  //dpm($variables);
+
+  if ($type == 'date') {
+    $variables['content'] = training_get_docs($nid);
+  }
+
 }
 
-// Получить список документов для машинистов
-function training_get_docs($id) {
-	global $user;
-	$uid = $user->uid;
-	$id = arg(2);
-	$rows = '';
-	// Флаги - Подписаться и Изучил урок
-	$flag_signup = flag_get_flag('signup');
-	$flag_learned = flag_get_flag('learned');
-	$output = '';
-	// Сдан ли тест
-	$is_passed_quiz = 0;
-	// Если администратор, то добавляем ссылку "Добавить урок".
-	if (IS_DRIVERS_ADMIN) {
-		$destination = drupal_get_destination();
-		$query = array('tid' => $id) + $destination; // Возможно удалить нужно!!!
-		$output .= l('Добавить документ', 'node/add/doc-for-drivers', array('query' => array('tid' => $id) + $destination));
-	}
-	
-	// Получаем список уроков курса
-	$query = db_select('node', 'n');
-	$query->join('taxonomy_index', 't', 't.nid = n.nid');
-	$query->condition('t.tid', $id);
-	$query->fields('n');
-	$results = $query->execute()->fetchAll();
-		
-	// Названия заголовков таблицы
-	$header = array(
-		'title' => 'Название теста',
-		'signup' => 'Подписка',
-		'quiz' => 'Тестирование',	
-	);
-	
-	// Для каждого урока
-	foreach ($results as $key => $result) {
-		// Получеам id теста из БД
-		$quiz_nid = db_select('field_data_field_lesson', 'f')
-		->condition('f.field_lesson_target_id', $result->nid)
-		->fields('f', array('entity_id'))
-		->execute()
-		->fetchField();
+// Получить список документов для машинистов.
+function training_get_docs($nid) {
+  global $user;
+  $uid = $user->uid;
+  $id = arg(2);
+  $rows = '';
+  // Флаги - Подписаться и Изучил урок
+  $flag_signup = flag_get_flag('signup');
+  $flag_learned = flag_get_flag('learned');
+  $output = '';
+  // Сдан ли тест
+  $is_passed_quiz = 0;
+  // Если администратор, то добавляем ссылку "Добавить урок".
+  if (IS_DRIVERS_ADMIN) {
+    $destination = drupal_get_destination();
+    $query = array('tid' => $id) + $destination; // Возможно удалить нужно!!!
+    $output .= l('Добавить документ', 'node/add/doc-for-drivers', array('query' => array('date_id' => $nid) + $destination));
+  }
 
-		// Подписан ли на урок
-		$is_signup = $flag_signup->is_flagged($result->nid);	
-		// Изучил ли урок
-		$is_learned = $flag_learned->is_flagged($result->nid);
-		
-		$flag_object = training_get_flag_content($result->nid, $flag_signup->fid, $uid);
-		// Если подписан на урок
-		if ($is_signup) {
-			$signup = t('Дата подписки<br />') . date(DATE_FORMAT, $flag_object->timestamp);
-			$title = l($result->title, 'node/' . $result->nid);
-			// Если изучил
-			if ($is_learned) {
-				// Существует ли тест
-				if ($quiz_nid) {
-					// Получаем результат теста
-					$quiz_results = db_select('quiz_node_results', 'q')
-					->condition('q.nid', $quiz_nid)
-					->condition('q.uid', $uid)
-					->fields('q', array('vid', 'time_end'))
-					->execute()
-					->fetchAll();
-					$test_vid = 0;
-					$test_time_end = 0;
-					foreach ($quiz_results as $item) {
-						$test_vid = $item->vid;
-						$test_time_end = $item->time_end;
-					}
-					// Сдан ли данный тест
-					$is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
-					if ($is_passed_quiz) {
-						$quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
-					} else {
-						$quiz = l('Пройти тест', 'node/' . $quiz_nid);
-					}
-				} else {
-					$quiz = 'Тест отсутствует';
-				}
-			} else {
-				$quiz = t('Изучите документ');
-			}
-		} else {
-			$title = $result->title;
-			
-				$signup = flag_create_link('signup', $result->nid);
-			
+  // Получаем список уроков курса
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_date', 'f', 'f.entity_id = n.nid');
+  $query->condition('f.field_date_target_id', $nid);
+  $query->fields('n');
+  $results = $query->execute()->fetchAll();
 
-			$quiz = '';
-		}
-		
-		$title .= training_admin_links($result->nid, $quiz_nid);
-		
-		//dpm($flag);
-		$rows[] = array(
-			'title' => $title,
-			'signup' => $signup,
-			'quiz' => $quiz,
-		);
-	}
-	// Если есть уроки
-	if ($rows) {
-		$output .= theme('table', array(
-			'header' => $header,
-			'rows' => $rows,
-			'attributes' => array('id' => 'training-table'),
-		));
-	} else {
-		$output .= '<div><p>Для данной даты нет документов.</p></div>';
-	}
-	
-	return $output;
+  // Названия заголовков таблицы
+  $header = array(
+    'title' => 'Название',
+    'signup' => 'Подписка',
+    'quiz' => 'Тестирование',
+  );
+
+  // Для каждого урока
+  foreach ($results as $key => $result) {
+    // Получеам id теста из БД
+    $quiz_nid = db_select('field_data_field_lesson', 'f')
+      ->condition('f.field_lesson_target_id', $result->nid)
+      ->fields('f', array('entity_id'))
+      ->execute()
+      ->fetchField();
+
+    // Подписан ли на урок
+    $is_signup = $flag_signup->is_flagged($result->nid);
+    // Изучил ли урок
+    $is_learned = $flag_learned->is_flagged($result->nid);
+    $flag_learned_object = training_get_flag_content($result->nid, $flag_learned->fid, $uid);
+
+    $flag_signup_object = training_get_flag_content($result->nid, $flag_signup->fid, $uid);
+    // Если подписан на урок
+    if ($is_signup) {
+      $signup = t('Дата подписки<br />') . date(DATE_FORMAT, $flag_signup_object->timestamp);
+      $title = l($result->title, 'node/' . $result->nid);
+      // Если изучил
+      if ($is_learned) {
+        // Существует ли тест
+        if ($quiz_nid) {
+          // Получаем результат теста
+          $quiz_results = db_select('quiz_node_results', 'q')
+            ->condition('q.nid', $quiz_nid)
+            ->condition('q.uid', $uid)
+            ->fields('q', array('vid', 'time_end'))
+            ->execute()
+            ->fetchAll();
+          $test_vid = 0;
+          $test_time_end = 0;
+          foreach ($quiz_results as $item) {
+            $test_vid = $item->vid;
+            $test_time_end = $item->time_end;
+          }
+          // Сдан ли данный тест
+          $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
+          if ($is_passed_quiz) {
+            $quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
+          }
+          else {
+            $quiz = l('Пройти тест', 'node/' . $quiz_nid);
+          }
+        }
+        else {
+          $quiz = 'Тест отсутствует<br>Ознакомлен ' . date(DATE_FORMAT, $flag_learned_object->timestamp);
+        }
+      }
+      else {
+        $quiz = t('Изучите документ');
+      }
+    }
+    else {
+      $title = $result->title;
+
+      $signup = flag_create_link('signup', $result->nid);
+
+
+      $quiz = '';
+    }
+
+    $title .= training_admin_links($result->nid, $quiz_nid);
+
+    //dpm($flag);
+    $rows[] = array(
+      'title' => $title,
+      'signup' => $signup,
+      'quiz' => $quiz,
+    );
+  }
+  // Если есть уроки
+  if ($rows) {
+    $output .= theme('table', array(
+      'header' => $header,
+      'rows' => $rows,
+      'attributes' => array('id' => 'training-table'),
+    ));
+  }
+  else {
+    $output .= '<div><p>Для данной даты нет документов.</p></div>';
+  }
+
+  return $output;
 }
 
 /*
@@ -703,21 +782,19 @@ function training_get_quiz_result($uid, $quiz_id) {
  * Переопределяем форму добавления материалов.
  */
 function training_form_alter(&$form, &$form_state, $form_id) {
-	global $user;
-	//dpm($user);
-	//dpm($form);
-	//dpm($form_state);
-	if (!($user->uid == 1)) {
-		// Форма добавления терминов. Надо будет удалить после переделки Инструктажа машинистов.
-		if ($form_id == 'taxonomy_form_term') {
-			$form['relations']['parent']['#title'] = 'Родительский элемент';
-			$form['relations']['parent']['#disabled'] = TRUE;
-			$form['relations']['parent']['#multiple'] = FALSE;
-			$form['relations']['weight']['#disabled'] = TRUE;
-			if (isset($_GET['tid'])) {
-				$form['relations']['parent']['#default_value'] = $_GET['tid'];
-			}
-		}
+  global $user;
+  if (!($user->uid == 1)) {
+    // Форма добавления терминов. Надо будет удалить после переделки Инструктажа машинистов.
+    /*
+    if ($form_id == 'taxonomy_form_term') {
+      $form['relations']['parent']['#title'] = 'Родительский элемент';
+      $form['relations']['parent']['#disabled'] = TRUE;
+      $form['relations']['parent']['#multiple'] = FALSE;
+      $form['relations']['weight']['#disabled'] = TRUE;
+      if (isset($_GET['tid'])) {
+        $form['relations']['parent']['#default_value'] = $_GET['tid'];
+      }
+    }*/
 
     // Форма Блока
     if ($form_id == 'block_node_form') {
@@ -742,6 +819,21 @@ function training_form_alter(&$form, &$form_state, $form_id) {
       }
     }
 
+    // Форма Даты
+    if ($form_id == 'date_node_form') {
+      $form['options']['#access'] = user_access('publish date');
+      $form['options']['#type'] = '';
+      unset($form['options']['promote']);
+      unset($form['options']['sticky']);
+      $form['field_direction']['#disabled'] = TRUE;
+      if (isset($_GET['direction_id'])) {
+        $form_state['direction_id'] = $_GET['direction_id'];
+      }
+      if (isset($form_state['direction_id'])) {
+        $form['field_direction']['und']['#default_value'] = $form_state['direction_id'];
+      }
+    }
+
     // Форма Урока
     if ($form_id == 'lesson_node_form') {
       $form['title']['#description'] = 'Название урока нужно вводить в формате <b style="color:red">Урок 1. Название урока</b>!';
@@ -751,141 +843,126 @@ function training_form_alter(&$form, &$form_state, $form_id) {
       }
     }
 
-		// Форма Теста
-		if ($form_id == 'quiz_node_form') {
-			// Если добавляем тест
-			if (isset($_GET['lid'])) {
-				// Указываем к какому уроку он привязан
-				$form['field_lesson']['und']['#default_value'][0] = $_GET['lid'];
-			// Если редактируем тест
-			} else {
-				// Добавляем ссылку на редактирование вопросов теста.
-				$form['edit_questions']['#markup'] = l(t('Edit questions'), 'node/' . arg(1) . '/questions', array('query' => drupal_get_destination()));
-			}
-			// Скрываем некоторые поля
-      $form['field_lesson']['#disabled'] = TRUE;
-			$form['quiz_availability']['#type'] = 'hidden';
-			$form['taking']['allow_jumping']['#type'] = 'hidden';
-
-			// Меняем вид
-			$form['taking']['#type']['#collapsible'] = FALSE;
-			$form['taking']['addons']['#type'] = '';
-			// Удаляем ненужные элементы.
-			unset($form['remember_settings']);
-			unset($form['summaryoptions']);
-			unset($form['resultoptions']);
-			unset($form['taking']['allow_resume']);
-			unset($form['taking']['allow_skipping']);
-			unset($form['taking']['backwards_navigation']);
-			unset($form['taking']['repeat_until_correct']);
-			unset($form['taking']['mark_doubtful']);
-			unset($form['taking']['show_passed']);
-			unset($form['taking']['randomization']);
-			unset($form['taking']['feedback']);
-			unset($form['taking']['multiple_takes']);
-		}
-
-		// Стандартная форма вывода результатов теста
-		if ($form_id == 'quiz_results_manage_results_form') {
-			//dpm($form);
-			// Запрещаем возможность удаления результатов теста
-			unset($form['update']);
-			$form['special_filters']['#collapsed'] = FALSE;
-		}
-		// Форма добавления типа материала "Вопрос с проверкой в ручном режиме Специалистом по обучению".
-		if ($form_id == 'short_answer_node_form') {
-			//dpm($form);
-			//$form['answer']['correct_answer']['#required'] = TRUE;
-			$form['answer']['correct_answer']['#type'] = 'textarea';
-			$form['answer']['correct_answer_evaluation']['#default_value'] = 3;
-			$form['answer']['correct_answer']['#description'] = 'Укажите правильный ответ (будет отображаться при проверке теста).';
-      unset($form['add_directly']['#group']);
-      $form['add_directly']['#disabled'] = TRUE;
-      $form['add_directly']['new']['#type'] = 'hidden';
-		}
-		// Форма добавления типа материала "Вопрос с автоматической проверкой".
-		if ($form_id == 'multichoice_node_form') {
-      unset($form['add_directly']['#group']);
-      $form['add_directly']['#disabled'] = TRUE;
-      $form['add_directly']['new']['#type'] = 'hidden';
-		}
-
-		// Форма добавления Документа.
-		if ($form_id == 'doc_for_drivers_node_form') {
-			$form['title']['#description'] = 'Введите название документа';
-			if (isset($_GET['tid'])) {
-				$form['field_course']['und']['#default_value'] = $_GET['tid'];
-			}
-		}
-		// Форма добавления вопросов
-		if ($form_id == 'quiz_questions_form') {
-			//training_form_quiz_questions_form_alter();
-			//dpm($form);
-			$form['additional_questions']['#collapsible'] = FALSE;
-			$form['question_list']['browser']['#collapsible'] = TRUE;
-			$form['question_list']['browser']['#collapsed'] = TRUE;
-			$form['submit']['#value'] = t('Save');
-		}
-		// Форма проверки результатов теста.
-		if ($form_id == 'quiz_report_form') {
-			//dpm($form);
-			for ($i = 0; isset($form[$i]); $i++) {
-				// Если вопросы уже проверены, то их нельзя корректировать.
-				if ($form[$i]['#is_evaluated'] == TRUE) {
-					$form[$i]['score']['#disabled'] = TRUE;
-					$form[$i]['answer_feedback']['#disabled'] = TRUE;
-				}
-			}
-		}
-		
-		// Форма добавления учебных материалов
-		if ($form_id == 'teaching_material_node_form') {
-			if (isset($_GET['tid'])) {
-				$form['field_section_training_center']['und']['#default_value'] = $_GET['tid'];
-			}
-			$form['field_section_training_center']['#type'] = 'hidden';
-			//dpm($form);
-		}
-
-      if ($form_id == 'quiz_question_answering_form') {
-        //dpm($form);
+    // Форма Теста
+    if ($form_id == 'quiz_node_form') {
+      // Если добавляем тест
+      if (isset($_GET['lid'])) {
+        // Указываем к какому уроку он привязан
+        $form['field_lesson']['und']['#default_value'][0] = $_GET['lid'];
+        // Если редактируем тест
       }
-	}
+      else {
+        // Добавляем ссылку на редактирование вопросов теста.
+        $form['edit_questions']['#markup'] = l(t('Edit questions'), 'node/' . arg(1) . '/questions', array('query' => drupal_get_destination()));
+      }
+      // Скрываем некоторые поля
+      $form['field_lesson']['#disabled'] = TRUE;
+      $form['quiz_availability']['#weight'] = -3;
+      $form['taking']['allow_jumping']['#type'] = 'hidden';
+
+      // Меняем вид
+      $form['taking']['#weight'] = 0;
+      $form['taking']['addons']['#type'] = '';
+      // Удаляем ненужные элементы.
+      unset($form['remember_settings']);
+      unset($form['summaryoptions']);
+      unset($form['resultoptions']);
+      unset($form['taking']['allow_resume']);
+      unset($form['taking']['allow_skipping']);
+      unset($form['taking']['backwards_navigation']);
+      unset($form['taking']['repeat_until_correct']);
+      unset($form['taking']['mark_doubtful']);
+      unset($form['taking']['show_passed']);
+      unset($form['taking']['randomization']);
+      unset($form['taking']['feedback']);
+      unset($form['taking']['multiple_takes']);
+      //dpm($form);
+    }
+
+    // Стандартная форма вывода результатов теста
+    if ($form_id == 'quiz_results_manage_results_form') {
+      //dpm($form);
+      // Запрещаем возможность удаления результатов теста
+      unset($form['update']);
+      $form['special_filters']['#collapsed'] = FALSE;
+    }
+    // Форма добавления типа материала "Вопрос с проверкой в ручном режиме Специалистом по обучению".
+    if ($form_id == 'short_answer_node_form') {
+      //dpm($form);
+      //$form['answer']['correct_answer']['#required'] = TRUE;
+      $form['answer']['correct_answer']['#type'] = 'textarea';
+      $form['answer']['correct_answer_evaluation']['#default_value'] = 3;
+      $form['answer']['correct_answer']['#description'] = 'Укажите правильный ответ (будет отображаться при проверке теста).';
+      unset($form['add_directly']['#group']);
+      $form['add_directly']['#disabled'] = TRUE;
+      $form['add_directly']['new']['#type'] = 'hidden';
+    }
+    // Форма добавления типа материала "Вопрос с автоматической проверкой".
+    if ($form_id == 'multichoice_node_form') {
+      unset($form['add_directly']['#group']);
+      $form['add_directly']['#disabled'] = TRUE;
+      $form['add_directly']['new']['#type'] = 'hidden';
+    }
+
+    // Форма добавления Документа.
+    if ($form_id == 'doc_for_drivers_node_form') {
+      $form['title']['#description'] = 'Введите название документа';
+      $form['field_date']['#disabled'] = TRUE;
+      if (isset($_GET['date_id'])) {
+        $form_state['date_id'] = $_GET['date_id'];
+      }
+      if (isset($form_state['date_id'])) {
+        $form['field_date']['und']['#default_value'] = $form_state['date_id'];
+      }
+      //dpm($form);
+    }
+    // Форма добавления вопросов
+    if ($form_id == 'quiz_questions_form') {
+      //training_form_quiz_questions_form_alter();
+      //dpm($form);
+      $form['additional_questions']['#collapsible'] = FALSE;
+      $form['question_list']['browser']['#collapsible'] = TRUE;
+      $form['question_list']['browser']['#collapsed'] = TRUE;
+      $form['submit']['#value'] = t('Save');
+    }
+    // Форма проверки результатов теста.
+    if ($form_id == 'quiz_report_form') {
+      //dpm($form);
+      for ($i = 0; isset($form[$i]); $i++) {
+        // Если вопросы уже проверены, то их нельзя корректировать.
+        if ($form[$i]['#is_evaluated'] == TRUE) {
+          $form[$i]['score']['#disabled'] = TRUE;
+          $form[$i]['answer_feedback']['#disabled'] = TRUE;
+        }
+      }
+    }
+
+    // Форма добавления учебных материалов
+    if ($form_id == 'teaching_material_node_form') {
+      if (isset($_GET['tid'])) {
+        $form['field_section_training_center']['und']['#default_value'] = $_GET['tid'];
+      }
+      $form['field_section_training_center']['#type'] = 'hidden';
+      //dpm($form);
+    }
+  }
 }
 
 /**
  * Implements hook_theme_registry_alter().
  */
 function training_theme_registry_alter(&$theme_registry) {
+  $path = drupal_get_path('module', 'training');
 	if (isset($theme_registry['quiz_admin_summary'])) {
+    $theme_registry['quiz_admin_summary']['includes'][] = $path . '/training.pages.inc';
     $theme_registry['quiz_admin_summary']['function'] = 'training_quiz_admin_summary';
 	}
-}
-
-// Страница просмотра и оценки результата теста
-function training_quiz_admin_summary($variables) {
-	$quiz = $variables['quiz'];
-  $questions = $variables['questions'];
-  $score = $variables['score'];
-  $summary = $variables['summary'];
-  $rid = $variables['rid'];
-  // To adjust the title uncomment and edit the line below:
-  // drupal_set_title(check_plain($quiz->title));
-  if (!$score['is_evaluated']) {
-    drupal_set_message(t('This quiz has not been scored yet.'), 'warning');
+  if (isset($theme_registry['quiz_user_summary'])) {
+    $theme_registry['quiz_user_summary']['includes'][] = $path . '/training.pages.inc';
+    $theme_registry['quiz_user_summary']['function'] = 'training_quiz_user_summary';
   }
-  // Display overall result.
-  $output = '';
-  $params = array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score']);
-  $output .= '<div id="quiz_score_possible">' . t('This person got %num_correct of %question_count possible points.', $params) . '</div>' . "\n";
-  $output .= '<div id="quiz_score_percent">' . t('Total score: @score %', array('@score' => $score['percentage_score'])) . '</div>' . "\n";
-
-  // Get the feedback for all questions.
-  require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'quiz') . '/quiz.pages.inc';
-  $report_form = drupal_get_form('quiz_report_form', $questions, TRUE, TRUE, TRUE);
-  $output .= drupal_render($report_form);
-  return $output;
 }
+
 
 /**
  * Проверен ли результат теста
@@ -923,15 +1000,15 @@ function training_quiz_is_evaluated($uid, $nid, $vid) {
 function training_course_is_evaluated ($nids) {
   global $user;
   if ($nids) {
-    $last_lesson_id = $nids[count($nids)-1]->nid;
-    $qid = training_get_quiz($last_lesson_id);
-    $result = training_get_quiz_result($user->uid, $qid);
-    if ($result) {
-      $quiz_is_passed = quiz_is_passed($user->uid, $qid, $result->vid);
-      return $quiz_is_passed;
-    }
+  $last_lesson_id = $nids[count($nids)-1]->nid;
+  $qid = training_get_quiz($last_lesson_id);
+  $result = training_get_quiz_result($user->uid, $qid);
+  if ($result) {
+    $quiz_is_passed = quiz_is_passed($user->uid, $qid, $result->vid);
+    return $quiz_is_passed;
   }
-  
+  }
+
   return FALSE;
 }
 
@@ -950,3 +1027,48 @@ function training_get_quiz($lid) {
 
   return $qid;
 }
+
+/**
+ * Show result page for a given result id
+ *
+ * @param $rid
+ *  Result id
+ */
+function training_quiz_user_results($rid) {
+  global $user;
+  $result = db_query('SELECT qnp.nid, qnp.vid, qnrs.uid
+    FROM {quiz_node_properties} qnp
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.vid = qnp.vid
+    WHERE qnrs.result_id = :rid', array(':rid' => $rid))->fetch();
+  if ($result->nid) {
+    // Если результат теста еще не проверен выводим сообщение.
+    if (!training_quiz_is_evaluated($result->uid, $result->nid, $result->vid)) {
+      $message = 'Этот тест ещё не был оценен. <a href="node/' . $result->nid . '/results/' . arg(2) . '">Оцените его</a>';
+      drupal_set_message($message, 'warning');
+    }
+    // User can view own results (quiz_menu sets access to 'own results').
+    // User with role 'user results' can view other user's results.
+    if ($result->uid != $user->uid && !user_access('view any quiz results')) {
+      drupal_access_denied();
+      return;
+    }
+
+    $quiz = node_load($result->nid, $result->vid);
+    $questions = _quiz_get_answers($quiz, $rid);
+    $score = quiz_calculate_score($quiz, $rid);
+    $summary = _quiz_get_summary_text($quiz, $score);
+    $data = array(
+      'quiz' => $quiz,
+      'questions' => $questions,
+      'score' => $score,
+      'summary' => $summary,
+      'rid' => $rid,
+    );
+    return theme('quiz_user_summary', $data);
+  }
+  else {
+    drupal_not_found();
+  }
+}
+
+

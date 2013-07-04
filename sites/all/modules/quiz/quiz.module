@@ -662,7 +662,7 @@ function quiz_form_quiz_node_form_alter(&$form, $form_state) {
 /**
  * Quiz node form submit callback.
  *
- * @see quiz_form_Some of the updated_alter()
+ * @see quiz_form_quiz_node_form_alter()
  */
 function quiz_form_quiz_node_form_submit($form, &$form_state) {
   $node = $form_state['node'];
@@ -802,7 +802,7 @@ function quiz_update($node) {
   _quiz_check_num_random($node);
   _quiz_check_num_always($node);
   quiz_update_max_score_properties(array($node->vid));
-  //drupal_set_message(t('Some of the updated settings may not apply to quiz being taken already. To see all changes in action you need to start again.'), 'warning');
+  drupal_set_message(t('Some of the updated settings may not apply to quiz being taken already. To see all changes in action you need to start again.'), 'warning');
 }
 
 /**

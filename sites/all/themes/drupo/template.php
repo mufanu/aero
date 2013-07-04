@@ -296,4 +296,10 @@ function drupo_preprocess_page(&$variables, $hook) {
 	->fetchField();
  	 $variables['theme_hook_suggestions'][] = 'page__vocabulary__' . $vid;
   }
+
+  if (isset($variables['node'])) {
+    if (($variables['node']->type == 'block') || ($variables['node']->type == 'course') || ($variables['node']->type == 'direction') || ($variables['node']->type == 'date')) {
+      unset($variables['tabs']);
+    }
+  }
 }

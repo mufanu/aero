@@ -1,0 +1,71 @@
+<?php
+
+/**
+ * The main file for quizfileupload.
+ *
+ * Code: logicmedia
+ *
+ * @file
+ * Quizfileupload question type for the Quiz module.
+ *
+ */
+
+/**
+ * define default allowed extensions
+ */ 
+define('QUIZFILEUPLOAD_DEFAULT_EXTENSIONS', 'png pdf odf doc docx');
+
+/**
+ * Implementation of hook_help().
+ */
+function quizfileupload_help($path, $args) {
+  if ($path == 'admin/help#quizfileupload') {
+    return t('This module provides a fileupload choice question type for Quiz.');
+  }
+}
+
+/**
+ * Implementation of hook_quiz_question_info().
+ */
+function quizfileupload_quiz_question_info() {
+  return array(
+    'quizfileupload' => array(
+      'name' => t('Fileupload question'),
+      'description' => t('This provides fileupload questions for use by the Quiz module.'),
+      'question provider' => 'QuizfileuploadQuestion',
+      'response provider' => 'QuizfileuploadResponse',
+      'module' => 'quiz_question',
+    ),
+  );
+}
+
+function quizfileupload_config() {
+  $form['quizfileupload_default_score'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default score'),
+    '#required' => TRUE,
+    '#default_value' => variable_get('quizfileupload_default_score', 1),
+  );  
+  $form['quizfileupload_default_extensions'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Allowed extension'),
+    '#description' => t('Enter the allowed file extensions one per line.'),
+    '#default_value' => variable_get('quizfileupload_default_extensions', QUIZFILEUPLOAD_DEFAULT_EXTENSIONS),
+    '#required' => TRUE,
+  );
+  return $form;
+}
+
+
+/**
+ * Fork of file_validate_extensions().
+ */ 
+function quizfileupload_validate_extensions($file, $extensions) {
+  $errors = array();
+
+  $regex = '/\.(' . preg_replace('/ +/', '|', preg_quote($extensions)) . ')$/i';
+  if (!preg_match($regex, $file->filename)) {
+    $errors[] = t('Only files with the following extensions are allowed: %files-allowed.', array('%files-allowed' => $extensions));
+  }
+  return $errors;
+}

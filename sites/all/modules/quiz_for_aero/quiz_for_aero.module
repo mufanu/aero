@@ -41,7 +41,7 @@ function quiz_for_aero_quiz_validate($variables) {
 	global $user;
 	$output = '';
   $quiz = $variables['quiz'];
-	dpm($quiz);
+	//dpm($quiz);
   $questions = $variables['questions'];
 	//dpm($questions);
   $score = $variables['score'];
@@ -67,8 +67,8 @@ function quiz_for_aero_quiz_validate($variables) {
 		if ($score['passing']) {
 			$passing = 'тест сдан';
 			$lesson = node_load($lid);
-			$course = $lesson->field_course['und'][0]['target_id'];
-			$link = l("Вернуться к курсу", '/taxonomy/term/' . $course);
+			$course = $lesson->field_course2['und'][0]['target_id'];
+			$link = l("Вернуться к курсу", 'node/' . $course);
 		// если не сдан
 		} else {
 			$passing = 'тест не сдан';
@@ -123,57 +123,66 @@ function quiz_for_aero_quiz_validate($variables) {
  */
 
 function quiz_for_aero_quiz_type_doc($variables) {
-	global $user;
-	$output = '';
+  global $user;
+  $output = '';
   $quiz = $variables['quiz'];
   $questions = $variables['questions'];
   $score = $variables['score'];
   $summary = $variables['summary'];
-	$rid = $variables['rid'];
-	// ID документа, которому принадлежит данный тест.
-	$lid = $quiz->field_lesson['und'][0]['target_id'];	
+  $rid = $variables['rid'];
+  // ID документа, которому принадлежит данный тест.
+  $lid = $quiz->field_lesson['und'][0]['target_id'];
   // Set the title here so themers can adjust.
   drupal_set_title($quiz->title);
-	// Время прохождения теста.
-	$takes_time = quiz_for_aero_takes_time($quiz->nid, $quiz->vid, $rid);
-	
+  // Время прохождения теста.
+  $takes_time = quiz_for_aero_takes_time($quiz->nid, $quiz->vid, $rid);
+
   //Проверен ли тест автоматически?
-	if($score['is_evaluated']) {
-		// Сдан ли тест?
-		if ($score['passing']) {
-			$passing = 'тест сдан';
-			$lesson = node_load($lid);
-			$course = $lesson->field_course['und'][0]['target_id'];
-			$link = l("Вернуться к документам", '/taxonomy/term/' . $course);
-		// если не сдан
-		} else {
-			$passing = 'тест не сдан';
-			$link =  l("Пройти тест", '/node/' . $quiz->nid);
-		}
-		$output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>' . $passing . '</div>';
-		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
-		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
-		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
-		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
-		if (isset($takes_info)) {
-			$output .= '<div id="quiz-takes-info">' . $takes_info . '</div>';
-		}
-		$output .= '<div id="quiz-links">' . $link . '</div>';
-		
-	// если нет, значит эти тесты проверяются в ручную. Пока не придумали функционал.
-	} else {
-		// Выводим об этом сообщение.
-		$msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
-		drupal_set_message($msg, 'warning');
-		
-		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
-		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
-		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
-		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
-		//$output .= '<div id="quiz-links">' . $link . '</div>';
-	}
-	
-	return $output;
+  if ($score['is_evaluated']) {
+    // Сдан ли тест?
+    if ($score['passing']) {
+      $passing = 'тест сдан';
+      $lesson = node_load($lid);
+      dpm($lesson);
+      $course = $lesson->field_date['und'][0]['target_id'];
+      $link = l("Вернуться к документам", '/node/' . $course);
+      // если не сдан
+    }
+    else {
+      $passing = 'тест не сдан';
+      $link = l("Пройти тест", '/node/' . $quiz->nid);
+    }
+    $output .= '<div id="quiz_summary"><b>' . t('Quiz result:') . ' </b>' . $passing . '</div>';
+    $output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+    $output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array(
+      '%num_correct' => $score['numeric_score'],
+      '%question_count' => $score['possible_score']
+    )) . '</div>';
+    $output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+    $output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+    if (isset($takes_info)) {
+      $output .= '<div id="quiz-takes-info">' . $takes_info . '</div>';
+    }
+    $output .= '<div id="quiz-links">' . $link . '</div>';
+
+    // если нет, значит эти тесты проверяются в ручную. Пока не придумали функционал.
+  }
+  else {
+    // Выводим об этом сообщение.
+    $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
+    drupal_set_message($msg, 'warning');
+
+    $output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+    $output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array(
+      '%num_correct' => $score['numeric_score'],
+      '%question_count' => $score['possible_score']
+    )) . '</div>';
+    $output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+    $output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+    //$output .= '<div id="quiz-links">' . $link . '</div>';
+  }
+
+  return $output;
 }
 
 /*

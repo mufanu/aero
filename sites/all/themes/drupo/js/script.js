@@ -39,8 +39,9 @@
 			$("#tabs").tabs();
 			
 			$('#views-exposed-form-tasks-page').ajaxStart(function(){
-        $('div.view-id-tasks').fadeTo(100, 0.4);
-      });			
+                $('div.view-id-tasks').fadeTo(100, 0.4);
+            }
+           );
 		}
 	}
 

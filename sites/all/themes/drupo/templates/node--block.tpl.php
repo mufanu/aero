@@ -105,20 +105,18 @@
       <?php endif; ?>
     </header>
   <?php endif; ?>
-  
-  <?php if($logged_in): ?>
-  	<a href="/node/add/course">Добавить курс</a>
-  <?php endif; ?>
 
   <?php
-    // We hide the comments and links now so that we can render them later.
-    hide($content['comments']);
-    hide($content['links']);
-    print render($content);
+  $output ='';
+  $path = 'node/add/course';
+  $menu = menu_get_item($path);
+  $link = l('Добавить курс', $menu['href'], array('attributes' =>array('title' => $menu['description']), 'query' => array('block_id' => $node->nid) + drupal_get_destination()));
+  if ($menu['access']) {
+    $output .= $link;
+  }
+  $output .= views_embed_view('learning2','block', $node->nid);
+
+  print $output;
   ?>
-
-  <?php print render($content['links']); ?>
-
-  <?php print render($content['comments']); ?>
 
 </article><!-- /.node -->

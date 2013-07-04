@@ -1,7 +1,7 @@
 <?php
 
 function training_my_lessons_menu() {
-	$items['user/%/mylessons'] = array(
+	$items['user/mylessons'] = array(
 		'title' => t('My lessons'),
 		'page callback' => 'training_my_lessons_get',
 		'access arguments' => array('access content'), 

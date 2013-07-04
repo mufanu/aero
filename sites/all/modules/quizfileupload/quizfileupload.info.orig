@@ -1,0 +1,13 @@
+name = Quiz File upload
+package = Quiz Question
+description = Fileupload question type for quiz.
+core = 6.x
+dependencies[] = quiz
+dependencies[] = quiz_question
+
+; Information added by drupal.org packaging script on 2011-06-25
+version = "6.x-1.1"
+core = "6.x"
+project = "quizfileupload"
+datestamp = "1309027022"
+

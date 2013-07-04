@@ -225,6 +225,11 @@ span.field-label { /* The inline field label used by the Fences module */
 .more-link { /* Aggregator, blog, and forum more link */
 }
 
+span.course-unpublished a,
+span.course-unpublished {
+  color: red!important;
+}
+
 .add-link {
 	background: url(../images/add.png) no-repeat;
 	height: 9px;

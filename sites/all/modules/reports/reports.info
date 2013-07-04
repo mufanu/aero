@@ -1,3 +1,6 @@
 name = Training center reports
 description = Отчеты для Учебного центра
 core = 7.x
+
+dependencies[] = date
+dependencies[] = date_popup

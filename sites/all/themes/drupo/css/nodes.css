@@ -72,6 +72,15 @@
   word-wrap: break-word; /* A very nice CSS3 property */
 }
 
+p.unpublished {
+  margin: 0;
+  height: 1em!important;
+}
+
+.node-unpublished tbody tr {
+  background: #FFF4F4!important;
+}
+
 .lt-ie8 .node-unpublished p.unpublished > *,
 .lt-ie8 .comment-unpublished > * {
   position: relative; /* Otherwise these elements will appear below the "Unpublished" text. */

@@ -1,7 +1,7 @@
 <?php
 
 function quiz_my_results_menu() {
-	$items['user/%/myresults'] = array(
+	$items['user/myresults'] = array(
     'title' => 'My results',
     'page callback' => 'quiz_my_results_get',
     'access arguments' => array('access content'),
