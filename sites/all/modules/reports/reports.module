@@ -35,27 +35,39 @@ function reports_form($form, &$form_state) {
   $format = 'Y-m-d';
 
   $form['date'] = array(
-    '#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+    '#type' => 'date_popup',
+    // types 'date_text' and 'date_timezone' are also supported. See .inc file.
     '#title' => t('Start date'),
     '#default_value' => $now,
     '#date_format' => $format,
-    '#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
-    '#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
-    '#date_increment' => 15, // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
-    '#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
-    '#datepicker_options' => array(), // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
+    '#date_label_position' => 'within',
+    // See other available attributes and what they do in date_api_elements.inc
+    '#date_timezone' => 'America/Chicago',
+    // Optional, if your date has a timezone other than the site timezone.
+    '#date_increment' => 15,
+    // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
+    '#date_year_range' => '-3:+3',
+    // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+    '#datepicker_options' => array(),
+    // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
   );
 
   $form['date2'] = array(
-    '#type' => 'date_popup', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+    '#type' => 'date_popup',
+    // types 'date_text' and 'date_timezone' are also supported. See .inc file.
     '#title' => t('End date'),
     '#default_value' => $now,
     '#date_format' => $format,
-    '#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
-    '#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
-    '#date_increment' => 15, // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
-    '#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
-    '#datepicker_options' => array(), // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
+    '#date_label_position' => 'within',
+    // See other available attributes and what they do in date_api_elements.inc
+    '#date_timezone' => 'America/Chicago',
+    // Optional, if your date has a timezone other than the site timezone.
+    '#date_increment' => 15,
+    // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
+    '#date_year_range' => '-3:+3',
+    // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+    '#datepicker_options' => array(),
+    // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
   );
 
   $form['submit'] = array(
@@ -69,9 +81,16 @@ function reports_form($form, &$form_state) {
     );
   }
 
+  //dpm($form);
+
   return $form;
 }
 
+/**
+ * @param $form
+ * @param $form_state
+ * @return string
+ */
 function reports_form_submit($form, &$form_state) {
   //dpm($form_state);
   $date = strtotime($form_state['values']['date']);
@@ -87,66 +106,127 @@ function reports_form_submit($form, &$form_state) {
     ),
   );
 
-  //return reports_flagged($date, $date2);
+  return reports_flagged($date, $date2);
 }
 
+/**
+ * Функция получает все отмеченные флагом материалы за указанный период $date - $date2
+ * @param $date
+ * @param $date2
+ * @return string
+ */
 function reports_flagged($date, $date2) {
-    // Флаг подписки
-    $flag_signup = flag_get_flag('signup');
+  // Флаг подписки
+  $flag_signup = flag_get_flag('signup');
 
-    // Отмеченные материалы
-    $query = db_select('flag_content', 'f');
-    // Пользователи отметишие
-    $query->join('users', 'u', 'f.uid = u.uid');
-    // Id курса
-    $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
-    // ID блока
-    $query->join('field_data_field_block', 'fb', 'fc.field_course2_target_id = fb.entity_id');
-    // Получаем ФИО
-    $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
-    // Должность
-    $query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
-    // Офис
-    $query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
-    // Название курса
-    $query->join('node', 'n', 'fc.field_course2_target_id = n.nid');
-    // Условия
-    $db_and = db_and();
-    $db_and->condition('f.timestamp', array($date, $date2), 'BETWEEN');
-    $db_and->condition('f.fid', $flag_signup->fid);
-    //$db_and->condition('n.type', 'lesson');
-    $query->condition($db_and);
-    // Поля
+  // Отмеченные материалы
+  $query = db_select('flag_content', 'f');
+  // Пользователи отметишие
+  //$query->join('users', 'u', 'f.uid = u.uid');
+  // Id курса
+  $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
+  // ID блока
+  //$query->join('field_data_field_block', 'fb', 'fc.field_course2_target_id = fb.entity_id');
+  // Получаем ФИО
+  //$query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
+  // Должность
+  //$query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
+  // Офис
+  //$query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
+  // Название курса
+  $query->join('node', 'n', 'fc.field_course2_target_id = n.nid');
+  // Условия
+  $db_and = db_and();
+  $db_and->condition('f.timestamp', array($date, $date2), 'BETWEEN');
+  $db_and->condition('f.fid', $flag_signup->fid);
+  //$db_and->condition('n.type', 'lesson');
+  $query->condition($db_and);
+  // Поля
 
-    //$query->addField('n', 'title', 'course_name');
-    $query->addField('n', 'nid', 'course_id');
-    $query->addField('f', 'content_id', 'lesson_id');
-    //$query->addField('ufn', 'field_user_full_name_value', 'fullname');
-    //$query->addField('up', 'field_user_position_value', 'position');
-    //$query->addField('uo', 'field_user_office_value', 'office');
-    //$query->addField('f', 'timestamp', 'signup_time');
+  //$query->addField('n', 'title', 'course_name');
+  $query->addField('n', 'nid', 'course_id');
+  //$query->addField('f', 'content_id', 'lesson_id');
 
-    //$query->fields('fb');
+  $result = $query->execute()->fetchAll();
 
-    $result = $query->execute()->fetchAllKeyed(0);
+  dpm($result);
 
-    dpm($result);
+  // id курсов, на которые были подписаны за указанный период.
+  foreach ($result as $key => $item) {
+    $array[] = $item->course_id;
+  }
 
-    //reports_is_first_lesson($result);
+  $courses = array_unique($array);
 
-    //return reports_output($result);
+
+
+  dpm($array);
+
+  //return reports_is_first_lesson($result);
 }
 
 function reports_is_first_lesson($data) {
-    $unique = array_unique($data);
-    //dpm($unique);
-    foreach ($unique as $item) {
-        $query = db_select('field_data_field_course2', 'fc');
-        $query->condition('fc.field_course2_target_id', $item->course_id);
-        $query->fields('fc');
-        $result[] = $query->execute()->fetchAll();
-    }
-    //dpm($result);
+
+  return reports_get_courses($data);
+
+}
+
+/**
+ * Функция отбирает только уникальные элементы, т.е. уникальные id курсов.
+ * @param $data
+ */
+function reports_get_courses($data) {
+
+  if (isset($_GET['date'])) {
+    $date = $_GET['date'];
+  }
+
+  if (isset($_GET['date2'])) {
+    $date2 = $_GET['date2'];
+  }
+
+  // Флаг подписки
+  $flag_signup = flag_get_flag('signup');
+  //dpm($data);
+
+
+
+
+  foreach ($courses as $course) {
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+    $query->join('field_data_field_block', 'fb', 'fc.field_course2_target_id = fb.entity_id');
+    $query->condition('fc.field_course2_target_id', $course);
+    $query->orderBy('n.title', 'ASC');
+    $query->range(0, 1);
+    $query->addField('fb', 'field_block_target_id', 'block_id');
+    $query->addField('fc', 'field_course2_target_id', 'course_id');
+    $query->addField('n', 'nid', 'lesson_id');
+    $result[] = $query->execute()->fetchObject();
+  }
+
+  foreach ($result as $course2) {
+    $query2 = db_select('node', 'n');
+    $query2->join('flag_content', 'f', 'f.content_id = n.nid');
+    // Пользователи отметишие
+    $query2->join('users', 'u', 'f.uid = u.uid');
+    // Получаем ФИО
+    $query2->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
+    $db_and = db_and();
+    $db_and->condition('f.content_id', $course2->lesson_id);
+    $db_and->condition('f.fid', $flag_signup->fid);
+    $db_and->condition('f.timestamp', array($date, $date2), 'BETWEEN');
+    $query2->condition($db_and);
+    $query2->addField('n', 'title', 'title');
+    $query2->addField('ufn', 'field_user_full_name_value', 'fullname');
+    $query2->addField('f', 'timestamp', 'signup_time');
+    $result2 = $query2->execute()->fetchAll();
+  }
+  dpm($result2);
+
+  return reports_output($result2);
+
+
 }
 
 function reports_output($data) {
@@ -188,25 +268,25 @@ function reports_output($data) {
   foreach ($data as $key => $item) {
     $rows[] = array(
       array(
-        'data' => $key+1,
+        'data' => $key + 1,
       ),
       array(
         'data' => '',
       ),
       array(
-        'data' => $item->course_name,
+        'data' => $item->title,
       ),
       array(
         'data' => $item->fullname,
       ),
       array(
-        'data' => $item->position,
+        'data' => '',//$item->position,
       ),
       array(
         'data' => '',
       ),
       array(
-        'data' => $item->office,
+        'data' => '',//$item->office,
       ),
       array(
         'data' => date('d.m.Y', $item->signup_time),
@@ -216,6 +296,8 @@ function reports_output($data) {
       ),
     );
   }
+
+  //dpm($rows);
 
   $output = theme('table', array(
       // Шапка таблицы
