@@ -940,10 +940,14 @@ function training_form_alter(&$form, &$form_state, $form_id) {
     // Форма добавления учебных материалов
     if ($form_id == 'teaching_material_node_form') {
       if (isset($_GET['tid'])) {
-        $form['field_section_training_center']['und']['#default_value'] = $_GET['tid'];
+        $form_state['tid'] = $_GET['tid'];
       }
-      $form['field_section_training_center']['#type'] = 'hidden';
-      //dpm($form);
+      if (isset($form_state['tid'])) {
+        $form['field_section_training_center']['und']['#default_value'] = $form_state['tid'];
+      }
+      $form['field_section_training_center']['#disabled'] = TRUE;
+
+      dpm($form);
     }
   }
 }
