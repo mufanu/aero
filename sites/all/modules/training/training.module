@@ -947,7 +947,7 @@ function training_form_alter(&$form, &$form_state, $form_id) {
       }
       $form['field_section_training_center']['#disabled'] = TRUE;
 
-      dpm($form);
+      //dpm($form);
     }
   }
 }
