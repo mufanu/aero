@@ -164,6 +164,22 @@ function reports_is_first_lesson($data) {
   return reports_get_signup($results);
 }
 
+function reports_get_blocks($data, $data2) {
+  foreach ($data as $course) {
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_block', 'fb', 'fb.field_block_target_id = n.nid');
+    $query->condition('fb.entity_id', $course['course_id']);
+    $query->addField('n', 'title', 'block_name');
+    $query->addField('fb', 'entity_id', 'course_id');
+    $result[] = $query->execute()->fetchAll();
+  }
+
+  dpm($result);
+
+
+
+}
+
 /**
  * Функция ищет подписавшихся
  */
@@ -209,6 +225,8 @@ function reports_get_signup($data) {
   }
 
   //dpm($array);
+
+  reports_get_blocks($data);
 
   return reports_output($array);
 
