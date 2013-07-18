@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * @return mixed
+ */
 function reports_menu() {
   $items['reports'] = array(
     'title' => 'Отчеты',
@@ -77,7 +79,7 @@ function reports_form($form, &$form_state) {
 
   if (isset($_GET['date'])) {
     $form['table'] = array(
-      '#markup' => reports_flagged($date, $date2),
+      '#markup' => reports_signup_courses($date, $date2),
     );
   }
 
@@ -106,61 +108,36 @@ function reports_form_submit($form, &$form_state) {
     ),
   );
 
-  return reports_flagged($date, $date2);
+  return reports_signup_courses($date, $date2);
 }
 
 /**
- * Функция получает все отмеченные флагом материалы за указанный период $date - $date2
+ * Функция получает id курсов, на которые были подписаны пользователи за указанный период $date - $date2.
+ * На выходе массив из id курсов.
  * @param $date
  * @param $date2
  * @return string
  */
-function reports_flagged($date, $date2) {
-  // Флаг подписки
+function reports_signup_courses($date, $date2) {
   $flag_signup = flag_get_flag('signup');
 
-  // Отмеченные материалы
   $query = db_select('flag_content', 'f');
-  // Пользователи отметишие
-  //$query->join('users', 'u', 'f.uid = u.uid');
-  // Id курса
   $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
-  // ID блока
-  //$query->join('field_data_field_block', 'fb', 'fc.field_course2_target_id = fb.entity_id');
-  // Получаем ФИО
-  //$query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
-  // Должность
-  //$query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
-  // Офис
-  //$query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
-  // Название курса
   $query->join('node', 'n', 'fc.field_course2_target_id = n.nid');
-  // Условия
   $db_and = db_and();
   $db_and->condition('f.timestamp', array($date, $date2), 'BETWEEN');
   $db_and->condition('f.fid', $flag_signup->fid);
-  //$db_and->condition('n.type', 'lesson');
   $query->condition($db_and);
-  // Поля
-
-  //$query->addField('n', 'title', 'course_name');
   $query->addField('n', 'nid', 'course_id');
-  //$query->addField('f', 'content_id', 'lesson_id');
-
   $result = $query->execute()->fetchAll();
 
-  dpm($result);
-
-  // id курсов, на которые были подписаны за указанный период.
-  foreach ($result as $key => $item) {
-    $array[] = $item->course_id;
+  foreach ($result as $item) {
+    $course_ids[] = $item->course_id;
   }
 
-  $courses = array_unique($array);
+  $courses = array_unique($course_ids);
 
-
-
-  dpm($array);
+  dpm($courses);
 
   //return reports_is_first_lesson($result);
 }
