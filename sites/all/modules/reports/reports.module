@@ -137,14 +137,36 @@ function reports_signup_courses($date, $date2) {
 
   $courses = array_unique($course_ids);
 
-  dpm($courses);
+  //dpm($courses);
 
-  //return reports_is_first_lesson($result);
+  return reports_is_first_lesson($courses);
 }
 
+/**
+ * Функция ищет id первого урока для указанных курсов
+ * @param $data
+ * @return string
+ */
 function reports_is_first_lesson($data) {
 
-  return reports_get_courses($data);
+  foreach ($data as $key => $course_id) {
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+    $query->condition('fc.field_course2_target_id', $course_id);
+    $query->orderBy('n.title');
+    $query->range(0, 1);
+    $query->fields('n', array('nid'));
+    $results[$key]['course_id'] = $course_id;
+    $results[$key]['lesson_id'] = $query->execute()->fetchField();
+  }
+
+  return reports_get_signup($results);
+}
+
+/**
+ * Функция ищет подписавшихся
+ */
+function reports_get_signup() {
 
 }
 
