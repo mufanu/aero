@@ -152,6 +152,7 @@ function reports_is_first_lesson($data) {
   foreach ($data as $key => $course_id) {
     $query = db_select('node', 'n');
     $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+    $query->join('field_data_field_block', 'fb', 'fc.field_course2_target_id = fb.entity_id');
     $query->condition('fc.field_course2_target_id', $course_id);
     $query->orderBy('n.title');
     $query->range(0, 1);
@@ -166,7 +167,50 @@ function reports_is_first_lesson($data) {
 /**
  * Функция ищет подписавшихся
  */
-function reports_get_signup() {
+function reports_get_signup($data) {
+
+  if (isset($_GET['date'])) {
+    $date = $_GET['date'];
+  }
+
+  if (isset($_GET['date2'])) {
+    $date2 = $_GET['date2'];
+  }
+
+  // Флаг подписки
+  $flag_signup = flag_get_flag('signup');
+
+  foreach ($data as $course) {
+    $query = db_select('node', 'n');
+    $query->join('flag_content', 'f', 'f.content_id = n.nid');
+    // Пользователи отметишие
+    $query->join('users', 'u', 'f.uid = u.uid');
+    // Получаем ФИО
+    $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
+    $query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
+    $query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
+    $db_and = db_and();
+    $db_and->condition('n.nid', $course['lesson_id']);
+    $db_and->condition('f.fid', $flag_signup->fid);
+    $db_and->condition('f.timestamp', array($date, $date2), 'BETWEEN');
+    $query->condition($db_and);
+    $query->addField('n', 'title', 'title');
+    $query->addField('ufn', 'field_user_full_name_value', 'fullname');
+    $query->addField('up', 'field_user_position_value', 'position');
+    $query->addField('uo', 'field_user_office_value', 'office');
+    $query->addField('f', 'timestamp', 'signup_time');
+    $results[] = $query->execute()->fetchAll();
+  }
+
+  foreach ($results as $result) {
+    foreach ($result as $item) {
+      $array[] = $item;
+    }
+  }
+
+  //dpm($array);
+
+  return reports_output($array);
 
 }
 
@@ -279,13 +323,13 @@ function reports_output($data) {
         'data' => $item->fullname,
       ),
       array(
-        'data' => '',//$item->position,
+        'data' => $item->position,
       ),
       array(
         'data' => '',
       ),
       array(
-        'data' => '',//$item->office,
+        'data' => $item->office,
       ),
       array(
         'data' => date('d.m.Y', $item->signup_time),
