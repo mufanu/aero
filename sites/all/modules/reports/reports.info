@@ -2,5 +2,7 @@ name = Training center reports
 description = 3 типа отчета для Учебного центра
 core = 7.x
 
+stylesheets[all][] = reports.css
+
 dependencies[] = date
 dependencies[] = date_popup
