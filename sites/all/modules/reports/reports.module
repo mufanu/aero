@@ -129,7 +129,7 @@ function reports_result($start_date, $end_date) {
     $first_lessons = reports_get_first_lessons($courses);
     $result = reports_get_results($first_lessons, $start_date, $end_date);
 
-    return reports_output($result, $start_date, $end_date);
+    return reports_signup_output($result, $start_date, $end_date);
   } else {
     return '<div id="no-results">Нет результатов за период c ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date) . '</div>';
   }
@@ -291,7 +291,7 @@ function reports_course_evaluate($course_id, $uid) {
  * @param $end_date
  * @return string
  */
-function reports_output($data, $start_date, $end_date) {
+function reports_signup_output($data, $start_date, $end_date) {
 
   //Дальше создаем таблицу и выводим полученные данные
   // Создаем   заголовок таблицы
