@@ -4,6 +4,12 @@
  * @return mixed
  */
 function reports_menu() {
+  $items['training-center/reports'] = array(
+    'title' => 'Отчеты по дистанционному обучению',
+    'page callback' => 'reports_main_page',
+    'access arguments' => array('administer training'),
+    'type' => MENU_CALLBACK,
+  );
   // Отчет по подпискам и завершению курсов за период
   $items['reports/signup'] = array(
     'title' => 'Отчет по подпискам и завершению курсов за период',
@@ -14,6 +20,12 @@ function reports_menu() {
   );
 
   return $items;
+}
+
+function reports_main_page() {
+  $output = l('Отчет по подпискам и завершению курсов за период', 'reports/signup');
+
+  return $output;
 }
 
 /**
