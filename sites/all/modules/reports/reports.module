@@ -4,6 +4,7 @@
  * @return mixed
  */
 function reports_menu() {
+  // Отчеты
   $items['training-center/reports'] = array(
     'title' => 'Отчеты по дистанционному обучению',
     'page callback' => 'reports_main_page',
@@ -18,17 +19,34 @@ function reports_menu() {
     'access arguments' => array('administer training'),
     'type' => MENU_CALLBACK,
   );
+  // Отчет по подпискам и завершению курсов за период
+  $items['reports/stat'] = array(
+    'title' => 'Отчет по подпискам и завершению курсов за период',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('reports_stat_form'),
+    'access arguments' => array('administer training'),
+    'type' => MENU_CALLBACK,
+  );
 
   return $items;
 }
 
+/**
+ * Главная страница отчетов.
+ * @return string
+ */
 function reports_main_page() {
-  $output = l('Отчет по подпискам и завершению курсов за период', 'reports/signup');
 
-  return $output;
+  $items['items'] = array(
+    l('Отчет по подпискам и завершению курсов за период', 'reports/signup'),
+    l('Статистика прохождения курсов дистанционного обучения', 'reports/stat'),
+  );
+
+  return theme('item_list', $items);
 }
 
 /**
+ * Форма для первого типа отчетности
  * @param $form
  * @param $form_state
  * @return mixed
@@ -90,7 +108,7 @@ function reports_signup_form($form, &$form_state) {
 
   if (isset($_GET['start_date'])) {
     $form['table'] = array(
-      '#markup' => reports_result($start_date, $end_date),
+      '#markup' => reports_signup_output($start_date, $end_date),
     );
   }
 
@@ -118,22 +136,67 @@ function reports_signup_form_submit($form, &$form_state) {
 }
 
 /**
- * Функция формирует отчет и выводит его.
+ * Форма для второго типа отчетности.
+ * @param $form
+ * @param $form_state
+ */
+function reports_stat_form($form, &$form_state) {
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Сформировать отчет'),
+  );
+
+  if (isset($_GET['action'])) {
+    $form['table'] = array(
+      '#markup' => reports_stat_output(),
+    );
+  }
+
+  return $form;
+}
+
+function reports_stat_form_submit($form, &$form_state) {
+  $form_state['redirect'] = array(
+    'reports/stat',
+    array(
+      'query' => array(
+        'action' => 'submit',
+      ),
+    ),
+  );
+}
+
+/**
+ * Функция формирует отчет для первого типа и выводит его.
  * @param $start_date
  * @param $end_date
  * @return string
  */
-function reports_result($start_date, $end_date) {
+function reports_signup_output($start_date, $end_date) {
   $courses = reports_signup_courses($start_date, $end_date);
   if($courses) {
-    $first_lessons = reports_get_first_lessons($courses);
-    $result = reports_get_results($first_lessons, $start_date, $end_date);
+    $first_lessons = reports_first_lessons($courses);
+    $result = reports_signup_results($first_lessons, $start_date, $end_date);
 
-    return reports_signup_output($result, $start_date, $end_date);
+    return reports_signup_table($result, $start_date, $end_date);
   } else {
     return '<div id="no-results">Нет результатов за период c ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date) . '</div>';
   }
+}
 
+function reports_stat_output() {
+  $data = array();
+  $courses = reports_stat_courses();
+  $data = $courses;
+  foreach ($courses as $course) {
+    $courses_id[] = $course->course_id;
+  }
+  $first_lessons = reports_first_lessons($courses_id);
+  foreach ($first_lessons as $key => $lesson) {
+    $data[$key]->signup_count = reports_stat_signup_count($lesson);
+  }
+
+  return reports_stat_table($data);
 }
 
 /**
@@ -164,16 +227,15 @@ function reports_signup_courses($start_date, $end_date) {
   } else {
     return FALSE;
   }
-
-
 }
 
 /**
  * Функция ищет id первого урока для указанных курсов
  * @param $courses
+ * Массив из Id курсов
  * @return string
  */
-function reports_get_first_lessons($courses) {
+function reports_first_lessons($courses) {
 
   foreach ($courses as $course_id) {
     $query = db_select('node', 'n');
@@ -195,7 +257,7 @@ function reports_get_first_lessons($courses) {
  * @param $end_date
  * @return string
  */
-function reports_get_results($first_lessons, $start_date, $end_date) {
+function reports_signup_results($first_lessons, $start_date, $end_date) {
   // Флаг подписки
   $flag_signup = flag_get_flag('signup');
 
@@ -286,12 +348,45 @@ function reports_course_evaluate($course_id, $uid) {
 }
 
 /**
+ * Функция получает список курсов и блоков
+ * @return mixed
+ */
+function reports_stat_courses() {
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_block', 'fb', 'n.nid = fb.entity_id');
+  $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
+  $query->addField('n2', 'title', 'block_name');
+  $query->addField('n', 'title', 'course_name');
+  $query->addField('n', 'nid', 'course_id');
+  $query->condition('n.status', 1);
+  $courses = $query->execute()->fetchAll();
+
+  return $courses;
+}
+
+function reports_stat_signup_count($lesson) {
+  $flag_signup = flag_get_flag('signup');
+
+  $query = db_select('flag_content', 'fc')
+    ->condition('fc.content_id', $lesson)
+    ->condition('fc.fid', $flag_signup->fid)
+    ->fields('fc')
+    ->countQuery()
+    ->execute()
+    ->fetchField();
+
+  return $query;
+
+}
+
+/**
+ * Вывод результатов в табличном виде для первого типа отчета.
  * @param $data
  * @param $start_date
  * @param $end_date
  * @return string
  */
-function reports_signup_output($data, $start_date, $end_date) {
+function reports_signup_table($data, $start_date, $end_date) {
 
   //Дальше создаем таблицу и выводим полученные данные
   // Создаем   заголовок таблицы
@@ -355,6 +450,74 @@ function reports_signup_output($data, $start_date, $end_date) {
       ),
       array(
         'data' => $item->evaluate,
+      ),
+    );
+  }
+
+  //dpm($rows);
+
+  $output = theme('table', array(
+      // Шапка таблицы
+      'header' => $header,
+      // Тело таблицы
+      'rows' => $rows,
+      // Заголовок таблицы
+      'caption' => $caption,
+      // Атрибуты таблицы
+      'attributes' => array('width' => '100%'),
+    )
+  );
+
+  return $output;
+}
+
+/**
+ * Вывод результатов в табличном виде для второго типа отчета.
+ * @param $data
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
+function reports_stat_table($data) {
+
+  //Дальше создаем таблицу и выводим полученные данные
+  // Создаем   заголовок таблицы
+  $caption = t('Статистика прохождения курсов дистанционного обучения');
+  // Создаем заголовки столбцов
+  $header = array(
+    array(
+      'data' => t('№'),
+    ),
+    array(
+      'data' => t('Название блока'),
+    ),
+    array(
+      'data' => t('Название курса'),
+    ),
+    array(
+      'data' => t('Количество подписей'),
+    ),
+    array(
+      'data' => t('Количество успешного прохождения курса'),
+    ),
+  );
+
+  foreach ($data as $key => $item) {
+    $rows[] = array(
+      array(
+        'data' => $key + 1,
+      ),
+      array(
+        'data' => $item->block_name,
+      ),
+      array(
+        'data' => $item->course_name,
+      ),
+      array(
+        'data' => $item->signup_count,
+      ),
+      array(
+        'data' => '',
       ),
     );
   }
