@@ -897,6 +897,11 @@ class MultichoiceResponse extends QuizQuestionResponse {
         }
       }
     }
+
+    if ($score < 0) {
+      $score = 0;
+    }
+
     return $score;
   }
 
