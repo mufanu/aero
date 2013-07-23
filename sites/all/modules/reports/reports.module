@@ -27,6 +27,14 @@ function reports_menu() {
     'access arguments' => array('administer training'),
     'type' => MENU_CALLBACK,
   );
+  // Персональная активность
+  $items['reports/personal'] = array(
+    'title' => 'Отчет по персональной активности в Центре дистанционного обучения',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('reports_personal_form'),
+    'access arguments' => array('administer training'),
+    'type' => MENU_CALLBACK,
+  );
 
   return $items;
 }
@@ -40,6 +48,7 @@ function reports_main_page() {
   $items['items'] = array(
     l('Отчет по подпискам и завершению курсов за период', 'reports/signup'),
     l('Статистика прохождения курсов дистанционного обучения', 'reports/stat'),
+    l('Отчет по персональной активности в Центре дистанционного обучения', 'reports/personal'),
   );
 
   return theme('item_list', $items);
@@ -167,6 +176,55 @@ function reports_stat_form_submit($form, &$form_state) {
 }
 
 /**
+ * @param $form
+ * @param $form_state
+ * @return mixed
+ */
+function reports_personal_form($form, &$form_state) {
+  if (isset($_GET['user'])) {
+    $user = $_GET['user'];
+  } else {
+    $user = '';
+  }
+
+  $form['standard']['first-col']['fullname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('ФИО'),
+    '#size' => 100,
+    '#default_value' => $user,
+    '#autocomplete_path' => 'userbook/autocomplete/fullname',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Сформировать отчет'),
+  );
+
+  if (isset($_GET['user'])) {
+    $form['table'] = array(
+      '#markup' => reports_personal_output($user),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function reports_personal_form_submit($form, &$form_state) {
+  //dpm($form_state);
+  $form_state['redirect'] = array(
+    'reports/personal',
+    array(
+      'query' => array(
+        'user' => $form_state['values']['fullname'],
+      ),
+    ),
+  );
+}
+
+/**
  * Функция формирует отчет для первого типа и выводит его.
  * @param $start_date
  * @param $end_date
@@ -196,6 +254,64 @@ function reports_stat_output() {
   reports_course_evaluate_count($data);
 
   return reports_stat_table($data);
+}
+
+function reports_personal_output($user) {
+  $data = reports_personal_courses($user);
+
+  reports_personal_signup($data);
+
+  return reports_personal_table($data);
+}
+
+/**
+ * Функция возвращает список курсов, на которые подписан пользователь.
+ * @param $user
+ * @return mixed
+ */
+function reports_personal_courses($user) {
+  $flag_signup = flag_get_flag('signup');
+
+  $query = db_select('field_data_field_user_full_name', 'ufn');
+  $query->join('flag_content', 'f', 'ufn.entity_id = f.uid');
+  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = f.content_id');
+  $query->join('node', 'n', 'n.nid = fc.field_course2_target_id');
+  $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
+  $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
+  $db_and = db_and();
+  $db_and->condition('field_user_full_name_value', $user);
+  $db_and->condition('f.fid', $flag_signup->fid);
+  $query->condition($db_and);
+  $query->distinct();
+  $query->addField('n2', 'title', 'block_name');
+  $query->addField('n', 'title', 'course_name');
+  $query->addField('fc', 'field_course2_target_id', 'course_id');
+  $query->addField('f', 'uid', 'uid');
+  $result = $query->execute()->fetchAll();
+
+  return $result;
+}
+
+/**
+ * Функция возвращает время подписки на курс
+ * @param $data
+ * @return mixed
+ */
+function reports_personal_signup($data) {
+  foreach ($data as $key => $course) {
+    $first_lesson = reports_first_lesson($course->course_id);
+    $query = db_select('flag_content', 'f')
+      ->condition('content_id', $first_lesson)
+      ->condition('uid', $course->uid)
+      ->fields('f', array('timestamp'))
+      ->execute()
+      ->fetchField();
+
+    $data[$key]->signup_time = $query;
+  }
+
+  return $data;
+
 }
 
 /**
@@ -605,6 +721,75 @@ function reports_stat_table($data) {
       ),
       array(
         'data' => $item->evaluate_count,
+      ),
+    );
+  }
+
+  //dpm($rows);
+
+  $output = theme('table', array(
+      // Шапка таблицы
+      'header' => $header,
+      // Тело таблицы
+      'rows' => $rows,
+      // Заголовок таблицы
+      'caption' => $caption,
+      // Атрибуты таблицы
+      'attributes' => array('width' => '100%'),
+    )
+  );
+
+  //reports_export_stuff($header, $rows);
+
+  return $output;
+}
+
+function reports_personal_table($data) {
+
+  //Дальше создаем таблицу и выводим полученные данные
+  // Создаем   заголовок таблицы
+  $caption = t('Статистика прохождения курсов дистанционного обучения');
+  // Создаем заголовки столбцов
+  $header = array(
+    array(
+      'data' => t('№'),
+    ),
+    array(
+      'data' => t('Название блока'),
+    ),
+    array(
+      'data' => t('Название курса'),
+    ),
+    array(
+      'data' => t('Дата подписки'),
+    ),
+    array(
+      'data' => t('Дата успешного прохождения курса'),
+    ),
+    array(
+      'data' => t('Общее количество тестов (уроков)'),
+    ),
+    array(
+      'data' => t('Количество попыток сдачи тестов'),
+    ),
+  );
+
+  foreach ($data as $key => $item) {
+    $rows[] = array(
+      array(
+        'data' => $key + 1,
+      ),
+      array(
+        'data' => $item->block_name,
+      ),
+      array(
+        'data' => $item->course_name,
+      ),
+      array(
+        'data' => date('d.m.Y', $item->signup_time),
+      ),
+      array(
+        'data' => '',
       ),
     );
   }
