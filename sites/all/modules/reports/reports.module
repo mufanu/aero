@@ -21,7 +21,7 @@ function reports_menu() {
   );
   // Отчет по подпискам и завершению курсов за период
   $items['reports/stat'] = array(
-    'title' => 'Отчет по подпискам и завершению курсов за период',
+    'title' => 'Статистика прохождения курсов дистанционного обучения',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('reports_stat_form'),
     'access arguments' => array('administer training'),
