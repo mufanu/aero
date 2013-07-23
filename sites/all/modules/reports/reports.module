@@ -184,17 +184,16 @@ function reports_signup_output($start_date, $end_date) {
   }
 }
 
+/**
+ * @return string
+ */
 function reports_stat_output() {
-  $data = array();
-  $courses = reports_stat_courses();
-  $data = $courses;
-  foreach ($courses as $course) {
-    $courses_id[] = $course->course_id;
-  }
-  $first_lessons = reports_first_lessons($courses_id);
-  foreach ($first_lessons as $key => $lesson) {
-    $data[$key]->signup_count = reports_stat_signup_count($lesson);
-  }
+  // Список курсов
+  $data = reports_stat_courses();
+  // Количество подписавшихся
+  reports_stat_signup_count($data);
+  // Количество завершенных
+  reports_course_evaluate_count($data);
 
   return reports_stat_table($data);
 }
@@ -248,6 +247,42 @@ function reports_first_lessons($courses) {
   }
 
   return $lessons;
+}
+
+/**
+ * Функция возраващает id первого урока для указанного курса
+ * @param $course
+ * @return mixed
+ */
+function reports_first_lesson($course) {
+
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+  $query->condition('fc.field_course2_target_id', $course);
+  $query->orderBy('n.title');
+  $query->range(0, 1);
+  $query->fields('n', array('nid'));
+  $lesson = $query->execute()->fetchField();
+
+  return $lesson;
+}
+
+/**
+ * Функция ищет id последнего урока для указанного курса.
+ * @param $courses
+ * @return array
+ */
+function reports_last_lesson($course) {
+
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+    $query->condition('fc.field_course2_target_id', $course);
+    $query->fields('n', array('nid'));
+    $count = $query->countQuery()->execute()->fetchField();
+    $query->range($count - 1, $count);
+    $lesson = $query->execute()->fetchField();
+
+  return $lesson;
 }
 
 /**
@@ -348,6 +383,71 @@ function reports_course_evaluate($course_id, $uid) {
 }
 
 /**
+ * Подсчитываем количество подписавшихся.
+ * Примечание: можно делать выборку с таблицы flag_counts, но почему то есть расхождения с ней.
+ * @param $lesson
+ * @return mixed
+ */
+function reports_stat_signup_count($data) {
+  $flag_signup = flag_get_flag('signup');
+
+  foreach ($data as $key => $item) {
+    // Получаем id первого урока для данного курса
+    $lesson_id = reports_first_lesson($item->course_id);
+    // Количество подписавшихся
+    $count = 0;
+
+    $query = db_select('flag_content', 'fc')
+      ->condition('fc.content_id', $lesson_id)
+      ->condition('fc.fid', $flag_signup->fid)
+      ->fields('fc')
+      ->countQuery()
+      ->execute()
+      ->fetchField();
+
+    $data[$key]->signup_count = $query;
+  }
+
+  return $data;
+}
+
+/**
+ * Функция вычисляет количество пройденных курсов
+ * @param $data
+ * @return mixed
+ */
+function reports_course_evaluate_count($data) {
+  foreach ($data as $key => $item) {
+    // Получаем id последнего урока для данного курса
+    $lesson_id = reports_last_lesson($item->course_id);
+    // Количество успешно пройденных курсов
+    $count = 0;
+    // Получаем все результаты тестов для последнего урока данного курса
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_lesson', 'fl', 'n.nid = fl.field_lesson_target_id');
+    $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+    $query->condition('n.nid', $lesson_id);
+    $query->fields('qnr');
+    $quiz_results = $query->execute()->fetchAll();
+    // Проверяем каждый результат, сдан ли тест.
+    foreach ($quiz_results as $quiz_result) {
+      $quiz_nid = $quiz_result->nid;
+      $quiz_vid = $quiz_result->vid;
+      $uid = $quiz_result->uid;
+      // Сдан ли данный тест
+      $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
+      if($is_passed_quiz == TRUE) {
+        $count++;
+      }
+    }
+    // Добавляем информацию к массиву data
+    $data[$key]->evaluate_count = $count;
+  }
+
+  return $data;
+}
+
+/**
  * Функция получает список курсов и блоков
  * @return mixed
  */
@@ -362,21 +462,6 @@ function reports_stat_courses() {
   $courses = $query->execute()->fetchAll();
 
   return $courses;
-}
-
-function reports_stat_signup_count($lesson) {
-  $flag_signup = flag_get_flag('signup');
-
-  $query = db_select('flag_content', 'fc')
-    ->condition('fc.content_id', $lesson)
-    ->condition('fc.fid', $flag_signup->fid)
-    ->fields('fc')
-    ->countQuery()
-    ->execute()
-    ->fetchField();
-
-  return $query;
-
 }
 
 /**
@@ -468,6 +553,8 @@ function reports_signup_table($data, $start_date, $end_date) {
     )
   );
 
+  //reports_export_stuff($header, $rows);
+
   return $output;
 }
 
@@ -517,7 +604,7 @@ function reports_stat_table($data) {
         'data' => $item->signup_count,
       ),
       array(
-        'data' => '',
+        'data' => $item->evaluate_count,
       ),
     );
   }
@@ -536,5 +623,47 @@ function reports_stat_table($data) {
     )
   );
 
+  //reports_export_stuff($header, $rows);
+
   return $output;
+}
+
+// Экспорт в excel
+function reports_export_stuff($headers2, $data2) {
+
+  foreach ($headers2 as $header) {
+    $headers['stat'][] = $header['data'];
+  }
+
+  foreach ($data2 as $key => $data3) {
+    foreach ($data3 as $data4) {
+      //dpm($data4);
+      $data['stat'][$key][] = $data4['data'];
+    }
+  }
+
+
+  //$data['stat'] = '';
+  //dpm($result);
+  module_load_include('inc', 'phpexcel');
+
+
+
+  // Store the file in sites/default/files
+  $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
+  $filename = 'export.xlsx';
+  $path = "$dir/$filename";
+
+  // Use the .xls format
+  $options = array('format' => 'xlsx', 'title' => 'sdfdgfdg');
+
+
+  $result = phpexcel_export($headers, $data, $path, $options);
+  if ($result == PHPEXCEL_SUCCESS) {
+    drupal_set_message(t("We did it !"));
+    //return $path;
+  }
+  else {
+    drupal_set_message(t("Oops ! An error occured !"), 'error');
+  }
 }
