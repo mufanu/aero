@@ -257,11 +257,33 @@ function reports_stat_output() {
 }
 
 function reports_personal_output($user) {
+
   $data = reports_personal_courses($user);
 
-  reports_personal_signup($data);
+  if ($data) {
+    foreach ($data as $key => $item) {
+      $course_signup = reports_course_signup($item->course_id, $item->uid);
+      $data[$key]->course_signup = date('d.m.Y', $course_signup);
+      $is_course_evaluate = reports_is_course_evaluate($item->course_id, $item->uid);
+      // Если курс завершен
+      if($is_course_evaluate) {
+        $data[$key]->course_evaluate = date('d.m.Y', $is_course_evaluate);
+      } else {
+        $data[$key]->course_evaluate = 'Не завершен';
+      }
 
-  return reports_personal_table($data);
+      $data[$key]->lessons_count = reports_course_lessons_count($item->course_id);
+
+      $data[$key]->quiz_count = reports_course_quiz_count($item->course_id, $item->uid);
+
+    }
+
+    return reports_personal_table($data);
+  } else {
+    return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
+  }
+
+
 }
 
 /**
@@ -293,25 +315,30 @@ function reports_personal_courses($user) {
 }
 
 /**
- * Функция возвращает время подписки на курс
- * @param $data
+ * Функция возвращает время подписки на курс.
+ * Время подписки на курс, это время отметки флагом первого урока указанного курса.
+ * @param $course_id
+ * id курса
+ * @param $uid
+ * id пользователя
  * @return mixed
+ * Возвращает время подписки на курс, иначе FALSE.
  */
-function reports_personal_signup($data) {
-  foreach ($data as $key => $course) {
-    $first_lesson = reports_first_lesson($course->course_id);
-    $query = db_select('flag_content', 'f')
-      ->condition('content_id', $first_lesson)
-      ->condition('uid', $course->uid)
-      ->fields('f', array('timestamp'))
-      ->execute()
-      ->fetchField();
+function reports_course_signup($course_id, $uid) {
 
-    $data[$key]->signup_time = $query;
+  $first_lesson = reports_first_lesson($course_id);
+  $query = db_select('flag_content', 'f')
+    ->condition('content_id', $first_lesson)
+    ->condition('uid', $uid)
+    ->fields('f', array('timestamp'))
+    ->execute()
+    ->fetchField();
+
+  if ($query) {
+    return $query;
+  } else {
+    return FALSE;
   }
-
-  return $data;
-
 }
 
 /**
@@ -581,6 +608,87 @@ function reports_stat_courses() {
 }
 
 /**
+ * Функция проверяет, завершен ли курс.
+ * Курс считается завершенным, если удачно сдан тест последнего урока указанного курса.
+ * @param $course_id
+ * id курса
+ * @param $uid
+ * id пользователя, сдававшего курс
+ * Если курс завершен, то возвращается время завершения теста, иначе FALSE.
+ * Примечание, будет заменой для reports_course_evaluate.
+ */
+function reports_is_course_evaluate($course_id, $uid) {
+  // Находим id последнего урока, т.к. курс считается завершенным, если сдан тест последнего урока.
+  $last_lesson_id = reports_last_lesson($course_id);
+  // Находим последний результат теста для данного пользователя.
+  // Почему только последний, Потому что, после удачной сдачи теста, пользователь больше не может сдавать данный тест.
+  $query = db_select('field_data_field_lesson', 'fl');
+  $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+  $query->condition('fl.field_lesson_target_id', $last_lesson_id);
+  $query->condition('qnr.uid', $uid);
+  $query->fields('qnr');
+  $count = $query->countQuery()->execute()->fetchField();
+  // Если количество результатов больше 1, берем только последний.
+  if ($count > 1) {
+    $query->range($count - 1, $count);
+  }
+
+  $quiz_result = $query->execute()->fetchObject();
+
+  // Если есть результат теста
+  if ($quiz_result) {
+    $quiz_nid = $quiz_result->nid;
+    $quiz_vid = $quiz_result->vid;
+    // Сдан ли данный тест
+    $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
+    // Если сдан тест, возвращаем объект результата
+    if ($is_passed_quiz == TRUE) {
+      return $quiz_result->time_end;
+    // Иначе FALSE
+    } else {
+      return FALSE;
+    }
+  }
+  // Если нет результата теста, возвращаем FALSE
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Подсчет количества уроков в указанном курсе.
+ * @param $course_id
+ * @return mixed
+ */
+function reports_course_lessons_count($course_id) {
+  $query = db_select('field_data_field_course2', 'fc');
+  $query->join('node', 'n', 'fc.entity_id = n.nid');
+  $query->condition('fc.field_course2_target_id', $course_id);
+  $query->condition('n.status', 1);
+  $count = $query->countQuery()->execute()->fetchField();
+
+  return $count;
+}
+
+/**
+ * Функция возвращает количество попыток сдачи теста для курса.
+ * @param $course_id
+ * @param $uid
+ * @return mixed
+ */
+function reports_course_quiz_count($course_id, $uid) {
+
+  $query = db_select('field_data_field_course2', 'fc');
+  $query->join('field_data_field_lesson', 'fl', 'fc.entity_id = fl.field_lesson_target_id');
+  $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+  $query->condition('fc.field_course2_target_id', $course_id);
+  $query->condition('qnr.uid', $uid);
+  $count = $query->countQuery()->execute()->fetchField();
+
+  return $count;
+}
+
+/**
  * Вывод результатов в табличном виде для первого типа отчета.
  * @param $data
  * @param $start_date
@@ -665,7 +773,7 @@ function reports_signup_table($data, $start_date, $end_date) {
       // Заголовок таблицы
       'caption' => $caption,
       // Атрибуты таблицы
-      'attributes' => array('width' => '100%'),
+      'attributes' => array('width' => '100%', 'class' => array('reports')),
     )
   );
 
@@ -735,7 +843,7 @@ function reports_stat_table($data) {
       // Заголовок таблицы
       'caption' => $caption,
       // Атрибуты таблицы
-      'attributes' => array('width' => '100%'),
+      'attributes' => array('width' => '100%', 'class' => array('reports')),
     )
   );
 
@@ -786,10 +894,16 @@ function reports_personal_table($data) {
         'data' => $item->course_name,
       ),
       array(
-        'data' => date('d.m.Y', $item->signup_time),
+        'data' => $item->course_signup,
       ),
       array(
-        'data' => '',
+        'data' => $item->course_evaluate,
+      ),
+      array(
+        'data' => $item->lessons_count,
+      ),
+      array(
+        'data' => $item->quiz_count,
       ),
     );
   }
@@ -804,7 +918,7 @@ function reports_personal_table($data) {
       // Заголовок таблицы
       'caption' => $caption,
       // Атрибуты таблицы
-      'attributes' => array('width' => '100%'),
+      'attributes' => array('width' => '100%', 'class' => array('reports')),
     )
   );
 

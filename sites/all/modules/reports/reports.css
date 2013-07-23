@@ -2,24 +2,25 @@
   float: none;
 }
 
-#reports-signup-form #no-results {
+#no-results {
   margin:  20px 0;
   text-align: center;
   font-weight: bold;
 }
 
-#reports-signup-form caption {
+.reports caption {
   font-weight: bold;
   color: #3366CC;
   margin: 10px;
 }
 
-#reports-signup-form th {
+.reports th {
   border: 1px solid #999;
   color: #3366CC;
   text-align: center;
+  padding: 5px;
 }
 
-#reports-signup-form td {
+.reports td {
   text-align: center;
 }
