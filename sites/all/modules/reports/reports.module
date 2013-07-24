@@ -248,7 +248,7 @@ function reports_personal_form($form, &$form_state) {
  * @param $form_state
  */
 function reports_personal_form_submit($form, &$form_state) {
-  //dpm($form_state);
+
   $form_state['redirect'] = array(
     'reports/personal',
     array(
@@ -905,10 +905,10 @@ function reports_signup_table($data, $start_date, $end_date) {
       ),
     );
   }
+  $excel = reports_export_xlsx($header, $rows, 'blank_1.xlsx');
+  $output = l('Скачать в Excel', $excel);
 
-  //dpm($rows);
-
-  $output = theme('table', array(
+  $output .= theme('table', array(
       // Шапка таблицы
       'header' => $header,
       // Тело таблицы
@@ -920,7 +920,7 @@ function reports_signup_table($data, $start_date, $end_date) {
     )
   );
 
-  //reports_export_stuff($header, $rows);
+  //
 
   return $output;
 }
@@ -976,9 +976,10 @@ function reports_stat_table($data) {
     );
   }
 
-  //dpm($rows);
+  $excel = reports_export_xlsx($header, $rows, 'blank_2.xlsx');
+  $output = l('Скачать в Excel', $excel);
 
-  $output = theme('table', array(
+  $output .= theme('table', array(
       // Шапка таблицы
       'header' => $header,
       // Тело таблицы
@@ -989,8 +990,6 @@ function reports_stat_table($data) {
       'attributes' => array('width' => '100%', 'class' => array('reports')),
     )
   );
-
-  //reports_export_stuff($header, $rows);
 
   return $output;
 }
@@ -1056,9 +1055,10 @@ function reports_evaluate_table($data) {
     );
   }
 
-  //dpm($rows);
+  $excel = reports_export_xlsx($header, $rows, 'blank_3.xlsx');
+  $output = l('Скачать в Excel', $excel);
 
-  $output = theme('table', array(
+  $output .= theme('table', array(
       // Шапка таблицы
       'header' => $header,
       // Тело таблицы
@@ -1134,9 +1134,10 @@ function reports_personal_table($data) {
     );
   }
 
-  //dpm($rows);
+  $excel = reports_export_xlsx($header, $rows, 'blank_4.xlsx');
+  $output = l('Скачать в Excel', $excel);
 
-  $output = theme('table', array(
+  $output .= theme('table', array(
       // Шапка таблицы
       'header' => $header,
       // Тело таблицы
@@ -1148,8 +1149,6 @@ function reports_personal_table($data) {
     )
   );
 
-  //reports_export_stuff($header, $rows);
-
   return $output;
 }
 
@@ -1157,7 +1156,10 @@ function reports_personal_table($data) {
 
 
 // Экспорт в excel
-function reports_export_stuff($headers2, $data2) {
+function reports_export_xlsx($headers2, $data2, $blank_file_name) {
+
+  $module_path = drupal_get_path('module', 'reports');
+  $blank = "$module_path/$blank_file_name";
 
   foreach ($headers2 as $header) {
     $headers['stat'][] = $header['data'];
@@ -1170,26 +1172,24 @@ function reports_export_stuff($headers2, $data2) {
     }
   }
 
-
-  //$data['stat'] = '';
-  //dpm($result);
   module_load_include('inc', 'phpexcel');
-
-
 
   // Store the file in sites/default/files
   $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
   $filename = 'export.xlsx';
   $path = "$dir/$filename";
 
-  // Use the .xls format
-  $options = array('format' => 'xlsx', 'title' => 'sdfdgfdg');
 
+  // Use the .xls format
+  $options = array(
+    'template' => $blank,
+    'format' => 'xlsx',
+  );
 
   $result = phpexcel_export($headers, $data, $path, $options);
+
   if ($result == PHPEXCEL_SUCCESS) {
-    drupal_set_message(t("We did it !"));
-    //return $path;
+    return $path;
   }
   else {
     drupal_set_message(t("Oops ! An error occured !"), 'error');
