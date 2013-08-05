@@ -108,10 +108,10 @@ function quiz_for_aero_quiz_validate($variables) {
 		$msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => $quiz->title));
 		drupal_set_message($msg, 'warning');
 		
-		$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
-		$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
-		$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
-		$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
+		//$output .= '<div id="quiz_question_count">' . t('Questions count: %question_count', array('%question_count' => $score['question_count'])) . '</div>';
+		//$output .= '<div id="quiz_score_real">' . t('<b>You got possible points:</b> %num_correct', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>';
+		//$output .= '<div id="quiz_take_time">' . t('<b>Время прохождения теста:</b> %time', array('%time' => $takes_time)) . '</div>';
+		//$output .= '<div id="quiz_score_percent">' . t('Your score: %score %', array('%score' => $score['percentage_score'])) . '</div>';
 		//$output .= '<div id="quiz-links">' . $link . '</div>';
 	}
 	
