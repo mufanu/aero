@@ -1,455 +1,563 @@
 <?php
 
+/**
+ * @return mixed
+ */
 function reports_menu() {
-  $items['training-center/reports'] = array(
-    'title' => 'Отчеты по дистанционному обучению',
-    'page callback' => 'reports_main_page',
-    'access arguments' => array('administer training'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['reports/signup'] = array(
-    'title' => 'Отчет по подпискам и завершению курсов за период',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('reports_signup_form'),
-    'access arguments' => array('administer training'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['reports/stat'] = array(
-    'title' => 'Статистика прохождения курсов дистанционного обучения',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('reports_stat_form'),
-    'access arguments' => array('administer training'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['reports/evaluate'] = array(
-    'title' => 'Отчет по незавершенным курсам',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('reports_evaluate_form'),
-    'access arguments' => array('administer training'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['reports/personal'] = array(
-    'title' => 'Отчет по персональной активности в Центре дистанционного обучения',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('reports_personal_form'),
-    'access arguments' => array('administer training'),
-    'type' => MENU_CALLBACK,
-  );
+    // Отчеты
+    $items['training-center/reports'] = array(
+        'title' => 'Отчеты по дистанционному обучению',
+        'page callback' => 'reports_main_page',
+        'access arguments' => array('administer training'),
+        'type' => MENU_CALLBACK,
+    );
+    // Отчет по подпискам и завершению курсов за период
+    $items['reports/signup'] = array(
+        'title' => 'Отчет по подпискам и завершению курсов за период',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('reports_signup_form'),
+        'access arguments' => array('administer training'),
+        'type' => MENU_CALLBACK,
+    );
+    // Отчет по подпискам и завершению курсов за период
+    $items['reports/stat'] = array(
+        'title' => 'Статистика прохождения курсов дистанционного обучения',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('reports_stat_form'),
+        'access arguments' => array('administer training'),
+        'type' => MENU_CALLBACK,
+    );
+    // Отчет по незавершенным курсам
+    $items['reports/evaluate'] = array(
+        'title' => 'Отчет по незавершенным курсам',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('reports_evaluate_form'),
+        'access arguments' => array('administer training'),
+        'type' => MENU_CALLBACK,
+    );
+    // Персональная активность
+    $items['reports/personal'] = array(
+        'title' => 'Отчет по персональной активности в Центре дистанционного обучения',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('reports_personal_form'),
+        'access arguments' => array('administer training'),
+        'type' => MENU_CALLBACK,
+    );
 
-  return $items;
+    return $items;
 }
 
+/**
+ * Главная страница отчетов.
+ * @return string
+ */
 function reports_main_page() {
 
-  $items['items'] = array(
-    l('Отчет по подпискам и завершению курсов за период', 'reports/signup'),
-    l('Статистика прохождения курсов дистанционного обучения', 'reports/stat'),
-    l('Отчет по незавершенным курсам', 'reports/evaluate'),
-    l('Отчет по персональной активности в Центре дистанционного обучения', 'reports/personal'),
-  );
+    $items['items'] = array(
+        l('Отчет по подпискам и завершению курсов за период', 'reports/signup'),
+        l('Статистика прохождения курсов дистанционного обучения', 'reports/stat'),
+        l('Отчет по незавершенным курсам', 'reports/evaluate'),
+        l('Отчет по персональной активности в Центре дистанционного обучения', 'reports/personal'),
+    );
 
-  return theme('item_list', $items);
+    return theme('item_list', $items);
 }
 
+/**
+ * Форма для первого типа отчетности
+ * @param $form
+ * @param $form_state
+ * @return mixed
+ */
 function reports_signup_form($form, &$form_state) {
 
-  $format = 'Y-m-d';
+    $format = 'Y-m-d';
 
-  if (isset($_GET['start_date'])) {
-    $start_date = $_GET['start_date'];
-  } else {
-    $start_date = time();
-  }
+    if (isset($_GET['start_date'])) {
+        $start_date = $_GET['start_date'];
+    } else {
+        $start_date = time();
+    }
 
-  if (isset($_GET['end_date'])) {
-    $end_date = $_GET['end_date'];
-  } else {
-    $end_date = time();
-  }
+    if (isset($_GET['end_date'])) {
+        $end_date = $_GET['end_date'];
+    } else {
+        $end_date = time();
+    }
 
-  $form = array();
+    $form = array();
 
-  $form['start_date'] = array(
-    '#type' => 'date_popup',
-    // types 'date_text' and 'date_timezone' are also supported. See .inc file.
-    '#title' => t('Start date'),
-    '#default_value' => date($format, $start_date),
-    '#date_format' => $format,
-    '#date_label_position' => 'within',
-    // See other available attributes and what they do in date_api_elements.inc
-    '#date_increment' => 15,
-    // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
-    '#date_year_range' => '-3:+3',
-    // Optional, used to set the year range (back 3 years and forward 3 years is the default).
-    '#datepicker_options' => array(),
-    // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
-  );
-
-  $form['end_date'] = array(
-    '#type' => 'date_popup',
-    // types 'date_text' and 'date_timezone' are also supported. See .inc file.
-    '#title' => t('End date'),
-    '#default_value' => date($format, $end_date),
-    '#date_format' => $format,
-    '#date_label_position' => 'within',
-    // See other available attributes and what they do in date_api_elements.inc
-    '#date_increment' => 15,
-    // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
-    '#date_year_range' => '-3:+3',
-    // Optional, used to set the year range (back 3 years and forward 3 years is the default).
-    '#datepicker_options' => array(),
-    // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
-  );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['start_date'])) {
-    $form['table'] = array(
-      '#markup' => reports_signup_output($start_date, $end_date),
+    $form['start_date'] = array(
+        '#type' => 'date_popup',
+        // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+        '#title' => t('Start date'),
+        '#default_value' => date($format, $start_date),
+        '#date_format' => $format,
+        '#date_label_position' => 'within',
+        // See other available attributes and what they do in date_api_elements.inc
+        '#date_increment' => 15,
+        // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
+        '#date_year_range' => '-3:+3',
+        // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+        '#datepicker_options' => array(),
+        // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
     );
-  }
 
-  return $form;
+    $form['end_date'] = array(
+        '#type' => 'date_popup',
+        // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+        '#title' => t('End date'),
+        '#default_value' => date($format, $end_date),
+        '#date_format' => $format,
+        '#date_label_position' => 'within',
+        // See other available attributes and what they do in date_api_elements.inc
+        '#date_increment' => 15,
+        // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
+        '#date_year_range' => '-3:+3',
+        // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+        '#datepicker_options' => array(),
+        // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Сформировать отчет'),
+    );
+
+    if (isset($_GET['start_date'])) {
+        $form['table'] = array(
+            '#markup' => reports_signup_output($start_date, $end_date),
+        );
+    }
+
+    return $form;
 }
 
+/**
+ * @param $form
+ * @param $form_state
+ * @return string
+ */
 function reports_signup_form_submit($form, &$form_state) {
-  $start_date = strtotime($form_state['values']['start_date']);
-  $end_date = strtotime($form_state['values']['end_date']);
+    $start_date = strtotime($form_state['values']['start_date']);
+    $end_date = strtotime($form_state['values']['end_date']);
 
-  $form_state['redirect'] = array(
-    'reports/signup',
-    array(
-      'query' => array(
-        'start_date' => $start_date,
-        'end_date' => $end_date,
-      ),
-    ),
-  );
+    $form_state['redirect'] = array(
+        'reports/signup',
+        array(
+            'query' => array(
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+            ),
+        ),
+    );
 }
 
+/**
+ * Форма для второго типа отчетности.
+ * @param $form
+ * @param $form_state
+ */
 function reports_stat_form($form, &$form_state) {
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['action'])) {
-    $form['table'] = array(
-      '#markup' => reports_stat_output(),
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Сформировать отчет'),
     );
-  }
 
-  return $form;
+    if (isset($_GET['action'])) {
+        $form['table'] = array(
+            '#markup' => reports_stat_output(),
+        );
+    }
+
+    return $form;
 }
 
 function reports_stat_form_submit($form, &$form_state) {
-  $form_state['redirect'] = array(
-    'reports/stat',
-    array(
-      'query' => array(
-        'action' => 'submit',
-      ),
-    ),
-  );
+    $form_state['redirect'] = array(
+        'reports/stat',
+        array(
+            'query' => array(
+                'action' => 'submit',
+            ),
+        ),
+    );
 }
 
 function reports_evaluate_form($form, &$form_state) {
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['action'])) {
-    $form['table'] = array(
-      '#markup' => reports_evaluate_output(),
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Сформировать отчет'),
     );
-  }
 
-  return $form;
+    if (isset($_GET['action'])) {
+        $form['table'] = array(
+            '#markup' => reports_evaluate_output(),
+        );
+    }
+
+    return $form;
 }
 
 function reports_evaluate_form_submit($form, &$form_state) {
-  $form_state['redirect'] = array(
-    'reports/evaluate',
-    array(
-      'query' => array(
-        'action' => 'submit',
-      ),
-    ),
-  );
-}
-
-function reports_personal_form($form, &$form_state) {
-  if (isset($_GET['user'])) {
-    $user = $_GET['user'];
-  } else {
-    $user = '';
-  }
-
-  $form['standard']['first-col']['fullname'] = array(
-    '#type' => 'textfield',
-    '#title' => t('ФИО'),
-    '#size' => 100,
-    '#default_value' => $user,
-    '#autocomplete_path' => 'userbook/autocomplete/fullname',
-  );
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['user'])) {
-    $form['table'] = array(
-      '#markup' => reports_personal_output($user),
+    $form_state['redirect'] = array(
+        'reports/evaluate',
+        array(
+            'query' => array(
+                'action' => 'submit',
+            ),
+        ),
     );
-  }
-
-  return $form;
 }
 
+/**
+ * @param $form
+ * @param $form_state
+ * @return mixed
+ */
+function reports_personal_form($form, &$form_state) {
+    if (isset($_GET['user'])) {
+        $user = $_GET['user'];
+    } else {
+        $user = '';
+    }
+
+    $form['standard']['first-col']['fullname'] = array(
+        '#type' => 'textfield',
+        '#title' => t('ФИО'),
+        '#size' => 100,
+        '#default_value' => $user,
+        '#autocomplete_path' => 'userbook/autocomplete/fullname',
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Сформировать отчет'),
+    );
+
+    if (isset($_GET['user'])) {
+        $form['table'] = array(
+            '#markup' => reports_personal_output($user),
+        );
+    }
+
+    return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
 function reports_personal_form_submit($form, &$form_state) {
 
-  $form_state['redirect'] = array(
-    'reports/personal',
-    array(
-      'query' => array(
-        'user' => $form_state['values']['fullname'],
-      ),
-    ),
-  );
+    $form_state['redirect'] = array(
+        'reports/personal',
+        array(
+            'query' => array(
+                'user' => $form_state['values']['fullname'],
+            ),
+        ),
+    );
 }
 
+/**
+ * Функция формирует отчет для первого типа и выводит его.
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_signup_output($start_date, $end_date) {
-  $courses = reports_signup_courses($start_date, $end_date);
-  if($courses) {
-    $first_lessons = reports_first_lessons($courses);
-    $result = reports_signup_results($first_lessons, $start_date, $end_date);
+    $courses = reports_signup_courses($start_date, $end_date);
+    if($courses) {
+        $first_lessons = reports_first_lessons($courses);
+        $result = reports_signup_results($first_lessons, $start_date, $end_date);
 
-    return reports_signup_table($result, $start_date, $end_date);
-  } else {
-    return '<div id="no-results">Нет результатов за период c ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date) . '</div>';
-  }
+        return reports_signup_table($result, $start_date, $end_date);
+    } else {
+        return '<div id="no-results">Нет результатов за период c ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date) . '</div>';
+    }
 }
 
+/**
+ * @return string
+ */
 function reports_stat_output() {
-  $data = reports_stat_courses();
-  reports_stat_signup_count($data);
-  reports_course_evaluate_count($data);
+    // Список курсов
+    $data = reports_stat_courses();
+    // Количество подписавшихся
+    reports_stat_signup_count($data);
+    // Количество завершенных
+    reports_course_evaluate_count($data);
 
-  return reports_stat_table($data);
+    return reports_stat_table($data);
 }
 
 function reports_evaluate_output() {
 
-  $data = reports_evaluate_courses();
+    $data = reports_evaluate_courses();
 
-  foreach ($data as $key => $item) {
-    $lesson = reports_evaluate_last_signup($item->course_id, $item->uid);
-    if ($lesson) {
-      $data[$key]->lesson_name = $lesson->lesson_name;
-      $data[$key]->signup_time = date('d.m.Y', $lesson->signup_time);
-      $overdue = reports_course_overdue($item->course_id, $item->uid);
-      if ($overdue) {
-        $data[$key]->course_overdue = $overdue;
-      } else {
-        $data[$key]->course_overdue = 'Не просрочен';
+    foreach ($data as $key => $item) {
+        $lesson = reports_evaluate_last_signup($item->course_id, $item->uid);
+        if ($lesson) {
+            $data[$key]->lesson_name = $lesson->lesson_name;
+            $data[$key]->signup_time = date('d.m.Y', $lesson->signup_time);
+            $overdue = reports_course_overdue($item->course_id, $item->uid);
+            if ($overdue) {
+                $data[$key]->course_overdue = $overdue;
+            } else {
+                $data[$key]->course_overdue = 'Не просрочен';
+            }
+        } else {
+            unset($data[$key]);
+        }
     }
-    } else {
-      unset($data[$key]);
-    }
-  }
 
-  return reports_evaluate_table($data);
+    return reports_evaluate_table($data);
 }
 
 function reports_personal_output($user) {
 
-  $data = reports_personal_courses($user);
+    $data = reports_personal_courses($user);
 
-  if ($data) {
-    foreach ($data as $key => $item) {
-      $course_signup = reports_course_signup($item->course_id, $item->uid);
-      $data[$key]->course_signup = date('d.m.Y', $course_signup);
-      $is_course_evaluate = reports_is_course_evaluate($item->course_id, $item->uid);
-      if($is_course_evaluate) {
-        $data[$key]->course_evaluate = date('d.m.Y', $is_course_evaluate);
-      } else {
-        $data[$key]->course_evaluate = 'Не завершен';
-      }
+    if ($data) {
+        foreach ($data as $key => $item) {
+            $course_signup = reports_course_signup($item->course_id, $item->uid);
+            $data[$key]->course_signup = date('d.m.Y', $course_signup);
+            $is_course_evaluate = reports_is_course_evaluate($item->course_id, $item->uid);
+            // Если курс завершен
+            if($is_course_evaluate) {
+                $data[$key]->course_evaluate = date('d.m.Y', $is_course_evaluate);
+            } else {
+                $data[$key]->course_evaluate = 'Не завершен';
+            }
 
-      $data[$key]->lessons_count = reports_course_lessons_count($item->course_id);
+            $data[$key]->lessons_count = reports_course_lessons_count($item->course_id);
 
-      $data[$key]->quiz_count = reports_course_quiz_count($item->course_id, $item->uid);
+            $data[$key]->quiz_count = reports_course_quiz_count($item->course_id, $item->uid);
 
+        }
+
+        return reports_personal_table($data);
+    } else {
+        return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
     }
-
-    return reports_personal_table($data);
-  } else {
-    return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
-  }
 
 
 }
 
+/**
+ * Функция возвращает список курсов, на которые подписан пользователь.
+ * @param $user
+ * @return mixed
+ */
 function reports_personal_courses($user) {
-  $flag_signup = flag_get_flag('signup');
-
-  $query = db_select('field_data_field_user_full_name', 'ufn');
-  $query->join('flag_content', 'f', 'ufn.entity_id = f.uid');
-  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = f.content_id');
-  $query->join('node', 'n', 'n.nid = fc.field_course2_target_id');
-  $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
-  $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
-  $db_and = db_and();
-  $db_and->condition('field_user_full_name_value', $user);
-  $db_and->condition('f.fid', $flag_signup->fid);
-  $query->condition($db_and);
-  $query->distinct();
-  $query->addField('n2', 'title', 'block_name');
-  $query->addField('n', 'title', 'course_name');
-  $query->addField('fc', 'field_course2_target_id', 'course_id');
-  $query->addField('f', 'uid', 'uid');
-  $result = $query->execute()->fetchAll();
-
-  return $result;
-}
-
-function reports_course_signup($course_id, $uid) {
-
-  $first_lesson = reports_first_lesson($course_id);
-  $query = db_select('flag_content', 'f')
-    ->condition('content_id', $first_lesson)
-    ->condition('uid', $uid)
-    ->fields('f', array('timestamp'))
-    ->execute()
-    ->fetchField();
-
-  if ($query) {
-    return $query;
-  } else {
-    return FALSE;
-  }
-}
-
-function reports_signup_courses($start_date, $end_date) {
-  $flag_signup = flag_get_flag('signup');
-
-  $query = db_select('flag_content', 'f');
-  $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
-  $db_and = db_and();
-  $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
-  $db_and->condition('f.fid', $flag_signup->fid);
-  $query->condition($db_and);
-  $query->distinct();
-  $query->addField('fc', 'field_course2_target_id', 'course_id');
-  $result = $query->execute()->fetchAll();
-
-  if ($result) {
-    foreach ($result as $item) {
-      $courses[] = $item->course_id;
-    }
-    return $courses;
-  } else {
-    return FALSE;
-  }
-}
-
-function reports_evaluate_courses() {
-  $flag_signup = flag_get_flag('signup');
-
-  $query = db_select('flag_content', 'f');
-  $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
-  $query->join('node', 'n', 'n.nid = fc.field_course2_target_id');
-  $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
-  $query->join('node', 'n2', 'n2.nid = fb.field_block_target_id');
-  $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = f.uid');
-  $db_and = db_and();
-  $db_and->condition('f.fid', $flag_signup->fid);
-  $query->condition($db_and);
-  $query->addField('n2', 'title', 'block_name');
-  $query->addField('n', 'title', 'course_name');
-  $query->addField('fc', 'field_course2_target_id', 'course_id');
-  $query->addField('f', 'uid', 'uid');
-  $query->addField('ufn', 'field_user_full_name_value', 'user_name');
-  $results = $query->execute()->fetchAll();
-
-  return $results;
-}
-
-function reports_evaluate_last_signup($course_id, $uid) {
-  $is_course_evaluate = reports_is_course_evaluate($course_id, $uid);
-
-  if (!$is_course_evaluate) {
-
     $flag_signup = flag_get_flag('signup');
 
-    $query = db_select('field_data_field_course2', 'fc');
-    $query->join('flag_content', 'f', 'f.content_id = fc.entity_id');
-    $query->join('node', 'n', 'n.nid = fc.entity_id');
+    $query = db_select('field_data_field_user_full_name', 'ufn');
+    $query->join('flag_content', 'f', 'ufn.entity_id = f.uid');
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = f.content_id');
+    $query->join('node', 'n', 'n.nid = fc.field_course2_target_id');
+    $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
+    $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
     $db_and = db_and();
-    $db_and->condition('fc.field_course2_target_id', $course_id);
-    $db_and->condition('f.uid', $uid);
+    $db_and->condition('field_user_full_name_value', $user);
     $db_and->condition('f.fid', $flag_signup->fid);
     $query->condition($db_and);
-    $query->addField('n', 'title', 'lesson_name');
-    $query->addField('f', 'timestamp', 'signup_time');
-    $count = $query->countQuery()->execute()->fetchField();
-    if ($count > 1) {
-      $query->range($count - 1, $count);
+    $query->distinct();
+    $query->addField('n2', 'title', 'block_name');
+    $query->addField('n', 'title', 'course_name');
+    $query->addField('fc', 'field_course2_target_id', 'course_id');
+    $query->addField('f', 'uid', 'uid');
+    $result = $query->execute()->fetchAll();
+
+    return $result;
+}
+
+/**
+ * Функция возвращает время подписки на курс.
+ * Время подписки на курс, это время отметки флагом первого урока указанного курса.
+ * @param $course_id
+ * id курса
+ * @param $uid
+ * id пользователя
+ * @return mixed
+ * Возвращает время подписки на курс, иначе FALSE.
+ */
+function reports_course_signup($course_id, $uid) {
+
+    $first_lesson = reports_first_lesson($course_id);
+    $query = db_select('flag_content', 'f')
+        ->condition('content_id', $first_lesson)
+        ->condition('uid', $uid)
+        ->fields('f', array('timestamp'))
+        ->execute()
+        ->fetchField();
+
+    if ($query) {
+        return $query;
+    } else {
+        return FALSE;
     }
-    $lesson = $query->execute()->fetchObject();
-
-    return $lesson;
-  } else {
-    return false;
-  }
 }
 
+/**
+ * Функция получает массив из уникальных id курсов, на которые были подписаны пользователи за указанный период $date - $date2.
+ * На выходе массив из id курсов.
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
+function reports_signup_courses($start_date, $end_date) {
+    $flag_signup = flag_get_flag('signup');
+
+    $query = db_select('flag_content', 'f');
+    $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
+    $db_and = db_and();
+    $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
+    $db_and->condition('f.fid', $flag_signup->fid);
+    $query->condition($db_and);
+    $query->distinct();
+    $query->addField('fc', 'field_course2_target_id', 'course_id');
+    $result = $query->execute()->fetchAll();
+
+    if ($result) {
+        foreach ($result as $item) {
+            $courses[] = $item->course_id;
+        }
+        return $courses;
+    } else {
+        return FALSE;
+    }
+}
+
+/**
+ * Функция получает списко курсов, на которые были подписаны пользователи за весь период
+ * @param $start_date
+ * @param $end_date
+ * @return array|bool
+ */
+function reports_evaluate_courses() {
+    $flag_signup = flag_get_flag('signup');
+
+    $query = db_select('flag_content', 'f');
+    $query->join('field_data_field_course2', 'fc', 'f.content_id = fc.entity_id');
+    $query->join('node', 'n', 'n.nid = fc.field_course2_target_id');
+    $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
+    $query->join('node', 'n2', 'n2.nid = fb.field_block_target_id');
+    $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = f.uid');
+    $db_and = db_and();
+    $db_and->condition('f.fid', $flag_signup->fid);
+    $query->condition($db_and);
+    $query->addField('n2', 'title', 'block_name');
+    $query->addField('n', 'title', 'course_name');
+    $query->addField('fc', 'field_course2_target_id', 'course_id');
+    $query->addField('f', 'uid', 'uid');
+    $query->addField('ufn', 'field_user_full_name_value', 'user_name');
+    $results = $query->execute()->fetchAll();
+
+    return $results;
+}
+
+/**
+ * Возращает объект, содержащий название урока и дата подписки
+ * @param $course_id
+ * @param $uid
+ * @return mixed
+ */
+function reports_evaluate_last_signup($course_id, $uid) {
+    $is_course_evaluate = reports_is_course_evaluate($course_id, $uid);
+
+    //dpm($is_course_evaluate);
+
+    if (!$is_course_evaluate) {
+
+        $flag_signup = flag_get_flag('signup');
+
+        $query = db_select('field_data_field_course2', 'fc');
+        $query->join('flag_content', 'f', 'f.content_id = fc.entity_id');
+        $query->join('node', 'n', 'n.nid = fc.entity_id');
+        $db_and = db_and();
+        $db_and->condition('fc.field_course2_target_id', $course_id);
+        $db_and->condition('f.uid', $uid);
+        $db_and->condition('f.fid', $flag_signup->fid);
+        $query->condition($db_and);
+        $query->addField('n', 'title', 'lesson_name');
+        $query->addField('f', 'timestamp', 'signup_time');
+        $count = $query->countQuery()->execute()->fetchField();
+        if ($count > 1) {
+            $query->range($count - 1, $count);
+        }
+        $lesson = $query->execute()->fetchObject();
+
+        return $lesson;
+    } else {
+        return false;
+    }
+}
+
+/**
+ * Функция вычисляет, просрочено ли время прохождения курса. Рекомендованное время прохождения 30 дней.
+ * @param $course_id
+ * @param $uid
+ * @return bool|number
+ */
 function reports_course_overdue($course_id, $uid) {
-  $course_signup_time = reports_course_signup($course_id, $uid);
-  $now = time();
+    $course_signup_time = reports_course_signup($course_id, $uid);
+    $now = time();
 
-  $diff = (($now - $course_signup_time)/86400 - 30);
+    $diff = (($now - $course_signup_time)/86400 - 30);
 
-  if ($diff > 0) {
-    return round($diff);
-  } else {
-    return false;
-  }
+    if ($diff > 0) {
+        return round($diff);
+    } else {
+        return false;
+    }
 
 }
 
+/**
+ * Функция ищет id первого урока для указанных курсов
+ * @param $courses
+ * Массив из Id курсов
+ * @return string
+ */
 function reports_first_lessons($courses) {
 
-  foreach ($courses as $course_id) {
+    foreach ($courses as $course_id) {
+        $query = db_select('node', 'n');
+        $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+        $query->condition('fc.field_course2_target_id', $course_id);
+        $query->orderBy('n.title');
+        $query->range(0, 1);
+        $query->fields('n', array('nid'));
+        $lessons[] = $query->execute()->fetchField();
+    }
+
+    return $lessons;
+}
+
+/**
+ * Функция возраващает id первого урока для указанного курса
+ * @param $course
+ * @return mixed
+ */
+function reports_first_lesson($course) {
+
     $query = db_select('node', 'n');
     $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
-    $query->condition('fc.field_course2_target_id', $course_id);
+    $query->condition('fc.field_course2_target_id', $course);
     $query->orderBy('n.title');
     $query->range(0, 1);
     $query->fields('n', array('nid'));
-    $lessons[] = $query->execute()->fetchField();
-  }
+    $lesson = $query->execute()->fetchField();
 
-  return $lessons;
+    return $lesson;
 }
 
-function reports_first_lesson($course) {
-
-  $query = db_select('node', 'n');
-  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
-  $query->condition('fc.field_course2_target_id', $course);
-  $query->orderBy('n.title');
-  $query->range(0, 1);
-  $query->fields('n', array('nid'));
-  $lesson = $query->execute()->fetchField();
-
-  return $lesson;
-}
-
+/**
+ * Функция ищет id последнего урока для указанного курса.
+ * @param $courses
+ * @return array
+ */
 function reports_last_lesson($course) {
 
     $query = db_select('node', 'n');
@@ -460,473 +568,588 @@ function reports_last_lesson($course) {
     $query->range($count - 1, $count);
     $lesson = $query->execute()->fetchField();
 
-  return $lesson;
+    return $lesson;
 }
 
+/**
+ * Функция делает выборку по подписанным материалам с условиями.
+ * @param $first_lessons
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_signup_results($first_lessons, $start_date, $end_date) {
-  $flag_signup = flag_get_flag('signup');
+    // Флаг подписки
+    $flag_signup = flag_get_flag('signup');
 
-  $query = db_select('flag_content', 'f');
-  $query->join('users', 'u', 'f.uid = u.uid');
-  $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
-  $query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
-  $query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
-  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = f.content_id');
-  $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
-  $query->join('node', 'nb', 'nb.nid = fb.field_block_target_id');
-  $query->join('node', 'n', 'fc.field_course2_target_id = n.nid');
-  $query->join('field_data_group_audience', 'ga', 'ga.entity_id = u.uid');
-  $query->join('og', 'o', 'o.gid = ga.group_audience_gid');
-  $db_and = db_and();
-  $db_and->condition('f.content_id', $first_lessons, 'IN');
-  $db_and->condition('f.fid', $flag_signup->fid);
-  $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
-  $query->condition($db_and);
-  $query->addField('nb', 'title', 'block_name');
-  $query->addField('n', 'title', 'course_name');
-  $query->addField('fc', 'field_course2_target_id', 'course_id');
-  $query->addField('u', 'uid',  'uid');
-  $query->addField('ufn', 'field_user_full_name_value', 'fullname');
-  $query->addField('up', 'field_user_position_value', 'position');
-  $query->addField('o', 'label', 'department');
-  $query->addField('uo', 'field_user_office_value', 'office');
-  $query->addField('f', 'timestamp', 'signup_time');
+    $query = db_select('flag_content', 'f');
+    // Пользователи отметившие
+    $query->join('users', 'u', 'f.uid = u.uid');
+    // Получаем ФИО
+    $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = u.uid');
+    // Должность
+    $query->join('field_data_field_user_position', 'up', 'up.entity_id = u.uid');
+    // Офис
+    $query->join('field_data_field_user_office', 'uo', 'uo.entity_id = u.uid');
+    // id курса
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = f.content_id');
+    // Название блока
+    $query->join('field_data_field_block', 'fb', 'fb.entity_id = fc.field_course2_target_id');
+    $query->join('node', 'nb', 'nb.nid = fb.field_block_target_id');
+    // Название курса
+    $query->join('node', 'n', 'fc.field_course2_target_id = n.nid');
+    // Отдел
+    $query->join('field_data_group_audience', 'ga', 'ga.entity_id = u.uid');
+    $query->join('og', 'o', 'o.gid = ga.group_audience_gid');
+    // Условия
+    $db_and = db_and();
+    $db_and->condition('f.content_id', $first_lessons, 'IN');
+    $db_and->condition('f.fid', $flag_signup->fid);
+    $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
+    $query->condition($db_and);
+    // Поля
+    $query->addField('nb', 'title', 'block_name');
+    $query->addField('n', 'title', 'course_name');
+    $query->addField('fc', 'field_course2_target_id', 'course_id');
+    $query->addField('u', 'uid',  'uid');
+    $query->addField('ufn', 'field_user_full_name_value', 'fullname');
+    $query->addField('up', 'field_user_position_value', 'position');
+    $query->addField('o', 'label', 'department');
+    $query->addField('uo', 'field_user_office_value', 'office');
+    $query->addField('f', 'timestamp', 'signup_time');
 
-  $results = $query->execute()->fetchAll();
+    $results = $query->execute()->fetchAll();
 
-  foreach($results as $key => $row) {
-    $results[$key]->evaluate = reports_course_evaluate($row->course_id, $row->uid);
-  }
+    foreach($results as $key => $row) {
+        $results[$key]->evaluate = reports_course_evaluate($row->course_id, $row->uid);
+    }
 
-  return $results;
+    return $results;
 }
 
+/**
+ * Функция проверяет, завершен ли курс. Нужно удалить!!!
+ * @param $course_id
+ * @param $uid
+ * @return bool|string
+ */
 function reports_course_evaluate($course_id, $uid) {
-  $query = db_select('node', 'n');
-  $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
-  $query->condition('fc.field_course2_target_id', $course_id);
-  $query->fields('n', array('nid'));
-  $count = $query->countQuery()->execute()->fetchField();
-  $query->range($count - 1, $count);
-  $last_lesson_id = $query->execute()->fetchField();
-  $query2 = db_select('node', 'n');
-  $query2->join('field_data_field_lesson', 'fl', 'n.nid = fl.field_lesson_target_id');
-  $query2->join('node', 'n2', 'fl.entity_id = n2.nid');
-  $query2->join('quiz_node_results', 'qnr', 'n2.nid = qnr.nid');
-  $query2->condition('n.nid', $last_lesson_id);
-  $query2->condition('qnr.uid', $uid);
-  $query2->fields('qnr');
-  $count2 = $query->countQuery()->execute()->fetchField();
-  $query->range($count2 - 1, $count2);
-  $quiz_result = $query2->execute()->fetchObject();
-
-  if ($quiz_result) {
-    $quiz_nid = $quiz_result->nid;
-    $quiz_vid = $quiz_result->vid;
-    $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
-    if($is_passed_quiz == TRUE) {
-      return date('d.m.Y', $quiz_result->time_end);
-    }
-  } else {
-    return 'Не завершен';
-  }
-}
-
-function reports_stat_signup_count($data) {
-  $flag_signup = flag_get_flag('signup');
-
-  foreach ($data as $key => $item) {
-    $lesson_id = reports_first_lesson($item->course_id);
-    $count = 0;
-
-    $query = db_select('flag_content', 'fc')
-      ->condition('fc.content_id', $lesson_id)
-      ->condition('fc.fid', $flag_signup->fid)
-      ->fields('fc')
-      ->countQuery()
-      ->execute()
-      ->fetchField();
-
-    $data[$key]->signup_count = $query;
-  }
-
-  return $data;
-}
-
-function reports_course_evaluate_count($data) {
-  foreach ($data as $key => $item) {
-    $lesson_id = reports_last_lesson($item->course_id);
-    $count = 0;
+    // Получаем id последнего урока для указанного курса
     $query = db_select('node', 'n');
-    $query->join('field_data_field_lesson', 'fl', 'n.nid = fl.field_lesson_target_id');
-    $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
-    $query->condition('n.nid', $lesson_id);
-    $query->fields('qnr');
-    $quiz_results = $query->execute()->fetchAll();
-    foreach ($quiz_results as $quiz_result) {
-      $quiz_nid = $quiz_result->nid;
-      $quiz_vid = $quiz_result->vid;
-      $uid = $quiz_result->uid;
-      $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
-      if($is_passed_quiz == TRUE) {
-        $count++;
-      }
-    }
-    $data[$key]->evaluate_count = $count;
-  }
-
-  return $data;
-}
-
-function reports_stat_courses() {
-  $query = db_select('node', 'n');
-  $query->join('field_data_field_block', 'fb', 'n.nid = fb.entity_id');
-  $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
-  $query->addField('n2', 'title', 'block_name');
-  $query->addField('n', 'title', 'course_name');
-  $query->addField('n', 'nid', 'course_id');
-  $query->condition('n.status', 1);
-  $courses = $query->execute()->fetchAll();
-
-  return $courses;
-}
-
-function reports_is_course_evaluate($course_id, $uid) {
-  $last_lesson_id = reports_last_lesson($course_id);
-  $query = db_select('field_data_field_lesson', 'fl');
-  $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
-  $query->condition('fl.field_lesson_target_id', $last_lesson_id);
-  $query->condition('qnr.uid', $uid);
-  $query->fields('qnr');
-  $count = $query->countQuery()->execute()->fetchField();
-  if ($count > 1) {
+    $query->join('field_data_field_course2', 'fc', 'fc.entity_id = n.nid');
+    $query->condition('fc.field_course2_target_id', $course_id);
+    $query->fields('n', array('nid'));
+    $count = $query->countQuery()->execute()->fetchField();
     $query->range($count - 1, $count);
-  }
+    $last_lesson_id = $query->execute()->fetchField();
+    // Находим все результаты теста для последнего урока
+    $query2 = db_select('node', 'n');
+    $query2->join('field_data_field_lesson', 'fl', 'n.nid = fl.field_lesson_target_id');
+    $query2->join('node', 'n2', 'fl.entity_id = n2.nid');
+    $query2->join('quiz_node_results', 'qnr', 'n2.nid = qnr.nid');
+    $query2->condition('n.nid', $last_lesson_id);
+    $query2->condition('qnr.uid', $uid);
+    $query2->fields('qnr');
+    $count2 = $query->countQuery()->execute()->fetchField();
+    $query->range($count2 - 1, $count2);
+    $quiz_result = $query2->execute()->fetchObject();
 
-  $quiz_result = $query->execute()->fetchObject();
-
-  if ($quiz_result) {
-    $quiz_nid = $quiz_result->nid;
-    $quiz_vid = $quiz_result->vid;
-    $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
-    if ($is_passed_quiz == TRUE) {
-      return $quiz_result->time_end;
+    // Если есть результаты
+    if ($quiz_result) {
+        $quiz_nid = $quiz_result->nid;
+        $quiz_vid = $quiz_result->vid;
+        // Сдан ли данный тест
+        $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
+        if($is_passed_quiz == TRUE) {
+            return date('d.m.Y', $quiz_result->time_end);
+        }
     } else {
-      return FALSE;
+        return 'Не завершен';
     }
-  }
-  else {
-    return FALSE;
-  }
 }
 
+/**
+ * Подсчитываем количество подписавшихся.
+ * Примечание: можно делать выборку с таблицы flag_counts, но почему то есть расхождения с ней.
+ * @param $lesson
+ * @return mixed
+ */
+function reports_stat_signup_count($data) {
+    $flag_signup = flag_get_flag('signup');
+
+    foreach ($data as $key => $item) {
+        // Получаем id первого урока для данного курса
+        $lesson_id = reports_first_lesson($item->course_id);
+        // Количество подписавшихся
+        $count = 0;
+
+        $query = db_select('flag_content', 'fc')
+            ->condition('fc.content_id', $lesson_id)
+            ->condition('fc.fid', $flag_signup->fid)
+            ->fields('fc')
+            ->countQuery()
+            ->execute()
+            ->fetchField();
+
+        $data[$key]->signup_count = $query;
+    }
+
+    return $data;
+}
+
+/**
+ * Функция вычисляет количество пройденных курсов
+ * @param $data
+ * @return mixed
+ */
+function reports_course_evaluate_count($data) {
+    foreach ($data as $key => $item) {
+        // Получаем id последнего урока для данного курса
+        $lesson_id = reports_last_lesson($item->course_id);
+        // Количество успешно пройденных курсов
+        $count = 0;
+        // Получаем все результаты тестов для последнего урока данного курса
+        $query = db_select('node', 'n');
+        $query->join('field_data_field_lesson', 'fl', 'n.nid = fl.field_lesson_target_id');
+        $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+        $query->condition('n.nid', $lesson_id);
+        $query->fields('qnr');
+        $quiz_results = $query->execute()->fetchAll();
+        // Проверяем каждый результат, сдан ли тест.
+        foreach ($quiz_results as $quiz_result) {
+            $quiz_nid = $quiz_result->nid;
+            $quiz_vid = $quiz_result->vid;
+            $uid = $quiz_result->uid;
+            // Сдан ли данный тест
+            $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
+            if($is_passed_quiz == TRUE) {
+                $count++;
+            }
+        }
+        // Добавляем информацию к массиву data
+        $data[$key]->evaluate_count = $count;
+    }
+
+    return $data;
+}
+
+/**
+ * Функция получает список курсов и блоков
+ * @return mixed
+ */
+function reports_stat_courses() {
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_block', 'fb', 'n.nid = fb.entity_id');
+    $query->join('node', 'n2', 'fb.field_block_target_id = n2.nid');
+    $query->addField('n2', 'title', 'block_name');
+    $query->addField('n', 'title', 'course_name');
+    $query->addField('n', 'nid', 'course_id');
+    $query->condition('n.status', 1);
+    $courses = $query->execute()->fetchAll();
+
+    return $courses;
+}
+
+/**
+ * Функция проверяет, завершен ли курс.
+ * Курс считается завершенным, если удачно сдан тест последнего урока указанного курса.
+ * @param $course_id
+ * id курса
+ * @param $uid
+ * id пользователя, сдававшего курс
+ * Если курс завершен, то возвращается время завершения теста, иначе FALSE.
+ * Примечание, будет заменой для reports_course_evaluate.
+ */
+function reports_is_course_evaluate($course_id, $uid) {
+    // Находим id последнего урока, т.к. курс считается завершенным, если сдан тест последнего урока.
+    $last_lesson_id = reports_last_lesson($course_id);
+    // Находим последний результат теста для данного пользователя.
+    // Почему только последний, Потому что, после удачной сдачи теста, пользователь больше не может сдавать данный тест.
+    $query = db_select('field_data_field_lesson', 'fl');
+    $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+    $query->condition('fl.field_lesson_target_id', $last_lesson_id);
+    $query->condition('qnr.uid', $uid);
+    $query->fields('qnr');
+    $count = $query->countQuery()->execute()->fetchField();
+    // Если количество результатов больше 1, берем только последний.
+    if ($count > 1) {
+        $query->range($count - 1, $count);
+    }
+
+    $quiz_result = $query->execute()->fetchObject();
+
+    // Если есть результат теста
+    if ($quiz_result) {
+        $quiz_nid = $quiz_result->nid;
+        $quiz_vid = $quiz_result->vid;
+        // Сдан ли данный тест
+        $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
+        // Если сдан тест, возвращаем объект результата
+        if ($is_passed_quiz == TRUE) {
+            return $quiz_result->time_end;
+            // Иначе FALSE
+        } else {
+            return FALSE;
+        }
+    }
+    // Если нет результата теста, возвращаем FALSE
+    else {
+        return FALSE;
+    }
+}
+
+/**
+ * Подсчет количества уроков в указанном курсе.
+ * @param $course_id
+ * @return mixed
+ */
 function reports_course_lessons_count($course_id) {
-  $query = db_select('field_data_field_course2', 'fc');
-  $query->join('node', 'n', 'fc.entity_id = n.nid');
-  $query->condition('fc.field_course2_target_id', $course_id);
-  $query->condition('n.status', 1);
-  $count = $query->countQuery()->execute()->fetchField();
+    $query = db_select('field_data_field_course2', 'fc');
+    $query->join('node', 'n', 'fc.entity_id = n.nid');
+    $query->condition('fc.field_course2_target_id', $course_id);
+    $query->condition('n.status', 1);
+    $count = $query->countQuery()->execute()->fetchField();
 
-  return $count;
+    return $count;
 }
 
+/**
+ * Функция возвращает количество попыток сдачи теста для курса.
+ * @param $course_id
+ * @param $uid
+ * @return mixed
+ */
 function reports_course_quiz_count($course_id, $uid) {
 
-  $query = db_select('field_data_field_course2', 'fc');
-  $query->join('field_data_field_lesson', 'fl', 'fc.entity_id = fl.field_lesson_target_id');
-  $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
-  $query->condition('fc.field_course2_target_id', $course_id);
-  $query->condition('qnr.uid', $uid);
-  $count = $query->countQuery()->execute()->fetchField();
+    $query = db_select('field_data_field_course2', 'fc');
+    $query->join('field_data_field_lesson', 'fl', 'fc.entity_id = fl.field_lesson_target_id');
+    $query->join('quiz_node_results', 'qnr', 'fl.entity_id = qnr.nid');
+    $query->condition('fc.field_course2_target_id', $course_id);
+    $query->condition('qnr.uid', $uid);
+    $count = $query->countQuery()->execute()->fetchField();
 
-  return $count;
+    return $count;
 }
 
+/**
+ * Вывод результатов в табличном виде для первого типа отчета.
+ * @param $data
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_signup_table($data, $start_date, $end_date) {
 
-  $caption = t('Отчет по подпискам и завершению курсов за период с ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date));
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('Название блока'),
-    ),
-    array(
-      'data' => t('Название курса'),
-    ),
-    array(
-      'data' => t('ФИО пользователя'),
-    ),
-    array(
-      'data' => t('Должность'),
-    ),
-    array(
-      'data' => t('Отдел'),
-    ),
-    array(
-      'data' => t('Офис'),
-    ),
-    array(
-      'data' => t('Дата подписки'),
-    ),
-    array(
-      'data' => t('Дата завершения курса'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->block_name,
-      ),
-      array(
-        'data' => $item->course_name,
-      ),
-      array(
-        'data' => $item->fullname,
-      ),
-      array(
-        'data' => $item->position,
-      ),
-      array(
-        'data' => $item->department,
-      ),
-      array(
-        'data' => $item->office,
-      ),
-      array(
-        'data' => date('d.m.Y', $item->signup_time),
-      ),
-      array(
-        'data' => $item->evaluate,
-      ),
+    //Дальше создаем таблицу и выводим полученные данные
+    // Создаем   заголовок таблицы
+    $caption = t('Отчет по подпискам и завершению курсов за период с ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date));
+    // Создаем заголовки столбцов
+    $header = array(
+        array(
+            'data' => t('№'),
+        ),
+        array(
+            'data' => t('Название блока'),
+        ),
+        array(
+            'data' => t('Название курса'),
+        ),
+        array(
+            'data' => t('ФИО пользователя'),
+        ),
+        array(
+            'data' => t('Должность'),
+        ),
+        array(
+            'data' => t('Отдел'),
+        ),
+        array(
+            'data' => t('Офис'),
+        ),
+        array(
+            'data' => t('Дата подписки'),
+        ),
+        array(
+            'data' => t('Дата завершения курса'),
+        ),
     );
-  }
-  $excel = reports_export_xlsx($header, $rows, 'blank_1.xlsx');
-  $output = l('Скачать в Excel', $excel);
 
-  $output .= theme('table', array(
-      // Шапка таблицы
-      'header' => $header,
-      // Тело таблицы
-      'rows' => $rows,
-      // Заголовок таблицы
-      'caption' => $caption,
-      // Атрибуты таблицы
-      'attributes' => array('width' => '100%', 'class' => array('reports')),
-    )
-  );
+    foreach ($data as $key => $item) {
+        $rows[] = array(
+            array(
+                'data' => $key + 1,
+            ),
+            array(
+                'data' => $item->block_name,
+            ),
+            array(
+                'data' => $item->course_name,
+            ),
+            array(
+                'data' => $item->fullname,
+            ),
+            array(
+                'data' => $item->position,
+            ),
+            array(
+                'data' => $item->department,
+            ),
+            array(
+                'data' => $item->office,
+            ),
+            array(
+                'data' => date('d.m.Y', $item->signup_time),
+            ),
+            array(
+                'data' => $item->evaluate,
+            ),
+        );
+    }
+    $excel = reports_export_xlsx($header, $rows, 'blank_1.xlsx');
+    $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
 
-  //
+    $output .= theme('table', array(
+                                   // Шапка таблицы
+                                   'header' => $header,
+                                   // Тело таблицы
+                                   'rows' => $rows,
+                                   // Заголовок таблицы
+                                   'caption' => $caption,
+                                   // Атрибуты таблицы
+                                   'attributes' => array('width' => '100%', 'class' => array('reports')),
+                              )
+    );
 
-  return $output;
+    //
+
+    return $output;
 }
 
+/**
+ * Вывод результатов в табличном виде для второго типа отчета.
+ * @param $data
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_stat_table($data) {
 
-  $caption = t('Статистика прохождения курсов дистанционного обучения');
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('Название блока'),
-    ),
-    array(
-      'data' => t('Название курса'),
-    ),
-    array(
-      'data' => t('Количество подписей'),
-    ),
-    array(
-      'data' => t('Количество успешного прохождения курса'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->block_name,
-      ),
-      array(
-        'data' => $item->course_name,
-      ),
-      array(
-        'data' => $item->signup_count,
-      ),
-      array(
-        'data' => $item->evaluate_count,
-      ),
+    //Дальше создаем таблицу и выводим полученные данные
+    // Создаем   заголовок таблицы
+    $caption = t('Статистика прохождения курсов дистанционного обучения');
+    // Создаем заголовки столбцов
+    $header = array(
+        array(
+            'data' => t('№'),
+        ),
+        array(
+            'data' => t('Название блока'),
+        ),
+        array(
+            'data' => t('Название курса'),
+        ),
+        array(
+            'data' => t('Количество подписей'),
+        ),
+        array(
+            'data' => t('Количество успешного прохождения курса'),
+        ),
     );
-  }
 
-  $excel = reports_export_xlsx($header, $rows, 'blank_2.xlsx');
-  $output = l('Скачать в Excel', $excel);
+    foreach ($data as $key => $item) {
+        $rows[] = array(
+            array(
+                'data' => $key + 1,
+            ),
+            array(
+                'data' => $item->block_name,
+            ),
+            array(
+                'data' => $item->course_name,
+            ),
+            array(
+                'data' => $item->signup_count,
+            ),
+            array(
+                'data' => $item->evaluate_count,
+            ),
+        );
+    }
 
-  $output .= theme('table', array(
-      // Шапка таблицы
-      'header' => $header,
-      // Тело таблицы
-      'rows' => $rows,
-      // Заголовок таблицы
-      'caption' => $caption,
-      // Атрибуты таблицы
-      'attributes' => array('width' => '100%', 'class' => array('reports')),
-    )
-  );
+    $excel = reports_export_xlsx($header, $rows, 'blank_2.xlsx');
+    $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
 
-  return $output;
+    $output .= theme('table', array(
+                                   // Шапка таблицы
+                                   'header' => $header,
+                                   // Тело таблицы
+                                   'rows' => $rows,
+                                   // Заголовок таблицы
+                                   'caption' => $caption,
+                                   // Атрибуты таблицы
+                                   'attributes' => array('width' => '100%', 'class' => array('reports')),
+                              )
+    );
+
+    return $output;
 }
 
+/**
+ * Вывод результатов в табличной форме для 3 типа отчета
+ * @param $data
+ * @return string
+ */
 function reports_evaluate_table($data) {
 
-  $caption = t('Отчет по незавершенным курсам на ' . date('d.m.Y', time()));
-  // Создаем заголовки столбцов
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('ФИО'),
-    ),
-    array(
-      'data' => t('Блок'),
-    ),
-    array(
-      'data' => t('Курс'),
-    ),
-    array(
-      'data' => t('Последняя подписка'),
-    ),
-    array(
-      'data' => t('Дата подписки на урок'),
-    ),
-    array(
-      'data' => t('Количество просроченных дней'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->user_name,
-      ),
-      array(
-        'data' => $item->block_name,
-      ),
-      array(
-        'data' => $item->course_name,
-      ),
-      array(
-        'data' => $item->lesson_name,
-      ),
-      array(
-        'data' => $item->signup_time,
-      ),
-      array(
-        'data' => $item->course_overdue,
-      ),
+    //Дальше создаем таблицу и выводим полученные данные
+    // Создаем   заголовок таблицы
+    $caption = t('Отчет по незавершенным курсам на ' . date('d.m.Y', time()));
+    // Создаем заголовки столбцов
+    $header = array(
+        array(
+            'data' => t('№'),
+        ),
+        array(
+            'data' => t('ФИО'),
+        ),
+        array(
+            'data' => t('Блок'),
+        ),
+        array(
+            'data' => t('Курс'),
+        ),
+        array(
+            'data' => t('Последняя подписка'),
+        ),
+        array(
+            'data' => t('Дата подписки на урок'),
+        ),
+        array(
+            'data' => t('Количество просроченных дней'),
+        ),
     );
-  }
 
-  $excel = reports_export_xlsx($header, $rows, 'blank_3.xlsx');
-  $output = l('Скачать в Excel', $excel);
+    foreach ($data as $key => $item) {
+        $rows[] = array(
+            array(
+                'data' => $key + 1,
+            ),
+            array(
+                'data' => $item->user_name,
+            ),
+            array(
+                'data' => $item->block_name,
+            ),
+            array(
+                'data' => $item->course_name,
+            ),
+            array(
+                'data' => $item->lesson_name,
+            ),
+            array(
+                'data' => $item->signup_time,
+            ),
+            array(
+                'data' => $item->course_overdue,
+            ),
+        );
+    }
 
-  $output .= theme('table', array(
-      // Шапка таблицы
-      'header' => $header,
-      // Тело таблицы
-      'rows' => $rows,
-      // Заголовок таблицы
-      'caption' => $caption,
-      // Атрибуты таблицы
-      'attributes' => array('width' => '100%', 'class' => array('reports')),
-    )
-  );
+    $excel = reports_export_xlsx($header, $rows, 'blank_3.xlsx');
+    $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
 
-  return $output;
+    $output .= theme('table', array(
+                                   // Шапка таблицы
+                                   'header' => $header,
+                                   // Тело таблицы
+                                   'rows' => $rows,
+                                   // Заголовок таблицы
+                                   'caption' => $caption,
+                                   // Атрибуты таблицы
+                                   'attributes' => array('width' => '100%', 'class' => array('reports')),
+                              )
+    );
+
+    return $output;
 }
 
+/**
+ * Вывод результатов для 4 типа отчетности
+ * @param $data
+ * @return string
+ */
 function reports_personal_table($data) {
 
-  $caption = t('Статистика прохождения курсов дистанционного обучения');
-  // Создаем заголовки столбцов
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('Название блока'),
-    ),
-    array(
-      'data' => t('Название курса'),
-    ),
-    array(
-      'data' => t('Дата подписки'),
-    ),
-    array(
-      'data' => t('Дата успешного прохождения курса'),
-    ),
-    array(
-      'data' => t('Общее количество тестов (уроков)'),
-    ),
-    array(
-      'data' => t('Количество попыток сдачи тестов'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->block_name,
-      ),
-      array(
-        'data' => $item->course_name,
-      ),
-      array(
-        'data' => $item->course_signup,
-      ),
-      array(
-        'data' => $item->course_evaluate,
-      ),
-      array(
-        'data' => $item->lessons_count,
-      ),
-      array(
-        'data' => $item->quiz_count,
-      ),
+    //Дальше создаем таблицу и выводим полученные данные
+    // Создаем   заголовок таблицы
+    $caption = t('Статистика прохождения курсов дистанционного обучения');
+    // Создаем заголовки столбцов
+    $header = array(
+        array(
+            'data' => t('№'),
+        ),
+        array(
+            'data' => t('Название блока'),
+        ),
+        array(
+            'data' => t('Название курса'),
+        ),
+        array(
+            'data' => t('Дата подписки'),
+        ),
+        array(
+            'data' => t('Дата успешного прохождения курса'),
+        ),
+        array(
+            'data' => t('Общее количество тестов (уроков)'),
+        ),
+        array(
+            'data' => t('Количество попыток сдачи тестов'),
+        ),
     );
-  }
 
-  $excel = reports_export_xlsx($header, $rows, 'blank_4.xlsx');
-  $output = l('Скачать в Excel', $excel);
+    foreach ($data as $key => $item) {
+        $rows[] = array(
+            array(
+                'data' => $key + 1,
+            ),
+            array(
+                'data' => $item->block_name,
+            ),
+            array(
+                'data' => $item->course_name,
+            ),
+            array(
+                'data' => $item->course_signup,
+            ),
+            array(
+                'data' => $item->course_evaluate,
+            ),
+            array(
+                'data' => $item->lessons_count,
+            ),
+            array(
+                'data' => $item->quiz_count,
+            ),
+        );
+    }
 
-  $output .= theme('table', array(
-      // Шапка таблицы
-      'header' => $header,
-      // Тело таблицы
-      'rows' => $rows,
-      // Заголовок таблицы
-      'caption' => $caption,
-      // Атрибуты таблицы
-      'attributes' => array('width' => '100%', 'class' => array('reports')),
-    )
-  );
+    $excel = reports_export_xlsx($header, $rows, 'blank_4.xlsx');
+    $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
 
-  return $output;
+    $output .= theme('table', array(
+                                   // Шапка таблицы
+                                   'header' => $header,
+                                   // Тело таблицы
+                                   'rows' => $rows,
+                                   // Заголовок таблицы
+                                   'caption' => $caption,
+                                   // Атрибуты таблицы
+                                   'attributes' => array('width' => '100%', 'class' => array('reports')),
+                              )
+    );
+
+    return $output;
 }
 
 
@@ -935,40 +1158,40 @@ function reports_personal_table($data) {
 // Экспорт в excel
 function reports_export_xlsx($headers2, $data2, $blank_file_name) {
 
-  $module_path = drupal_get_path('module', 'reports');
-  $blank = "$module_path/$blank_file_name";
+    $module_path = drupal_get_path('module', 'reports');
+    $blank = "$module_path/$blank_file_name";
 
-  foreach ($headers2 as $header) {
-    $headers['stat'][] = $header['data'];
-  }
-
-  foreach ($data2 as $key => $data3) {
-    foreach ($data3 as $data4) {
-      //dpm($data4);
-      $data['stat'][$key][] = $data4['data'];
+    foreach ($headers2 as $header) {
+        $headers['stat'][] = $header['data'];
     }
-  }
 
-  module_load_include('inc', 'phpexcel');
+    foreach ($data2 as $key => $data3) {
+        foreach ($data3 as $data4) {
+            //dpm($data4);
+            $data['stat'][$key][] = $data4['data'];
+        }
+    }
 
-  // Store the file in sites/default/files
-  $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
-  $filename = 'export.xlsx';
-  $path = "$dir/$filename";
+    module_load_include('inc', 'phpexcel');
+
+    // Store the file in sites/default/files
+    $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
+    $filename = 'export.xlsx';
+    $path = "$dir/$filename";
 
 
-  // Use the .xls format
-  $options = array(
-    'template' => $blank,
-    'format' => 'xlsx',
-  );
+    // Use the .xls format
+    $options = array(
+        'template' => $blank,
+        'format' => 'xlsx',
+    );
 
-  $result = phpexcel_export($headers, $data, $path, $options);
+    $result = phpexcel_export($headers, $data, $path, $options);
 
-  if ($result == PHPEXCEL_SUCCESS) {
-    return $path;
-  }
-  else {
-    drupal_set_message(t("Oops ! An error occured !"), 'error');
-  }
+    if ($result == PHPEXCEL_SUCCESS) {
+        return '/sites/default/files/export.xlsx';
+    }
+    else {
+        drupal_set_message(t("Oops ! An error occured !"), 'error');
+    }
 }
