@@ -115,7 +115,7 @@
     document.oncontextmenu=new Function("return false")
   </script>
 </head>
-<body class="<?php print $classes; ?>" <?php print $attributes;?> oncopy="return false">
+<body class="<?php print $classes; ?>" <?php print $attributes;?> oncopy="return false" onselectstart="return false">
 
   <?php if ($skip_link_text && $skip_link_anchor): ?>
     <p id="skip-link">
