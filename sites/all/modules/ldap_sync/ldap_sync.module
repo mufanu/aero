@@ -25,11 +25,15 @@ function ldap_sync_menu() {
 	$items['sync/info'] = array(
 		'title' => t('Синхронизация пользователей'),
 		'page callback' => 'ldap_sync_get_info',
-		'access arguments' => array('access content'), 
+		'access arguments' => true,
     'type' => MENU_CALLBACK,
 	);
 	
 	return $items;
+}
+
+function ldap_sync_cron() {
+    ldap_sync_get_info();
 }
 
 /*
