@@ -1,0 +1,30 @@
+#reports-signup-form .date-padding {
+  float: none;
+}
+
+#no-results {
+  margin:  20px 0;
+  text-align: center;
+  font-weight: bold;
+}
+
+.reports caption {
+  font-weight: bold;
+  color: #3366CC;
+  margin: 10px;
+}
+
+.reports th {
+  border: 1px solid #999;
+  color: #3366CC;
+  text-align: center;
+  padding: 5px;
+}
+
+.reports td {
+  text-align: center;
+}
+
+.download-excel {
+  margin-left: 10px;
+}

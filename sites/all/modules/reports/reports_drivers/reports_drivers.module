@@ -1,0 +1,234 @@
+<?php
+
+/**
+ * @return mixed
+ */
+function reports_drivers_menu() {
+  // Отчеты по инструктажу машинистов
+  $items['training-center/reports/drivers'] = array(
+    'title'            => 'Отчеты по инструктажу машинистов',
+    'page callback'    => 'reports_drivers_main_page',
+    'access arguments' => array('administer training'),
+    'type'             => MENU_CALLBACK,
+  );
+  // Отчет по статистике изучения документа
+  $items['reports/drivers/stat'] = array(
+    'title'            => 'Отчет по статистике изучения документа',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('reports_drivers_stat_form'),
+    'access arguments' => array('administer training'),
+    'type'             => MENU_CALLBACK,
+  );
+  // Персональный отчет машиниста по изучению документа
+  $items['reports/drivers/personal'] = array(
+    'title'            => 'Персональный отчет машиниста по изучению документа',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('reports_drivers_personal_form'),
+    'access arguments' => array('administer training'),
+    'type'             => MENU_CALLBACK,
+  );
+
+  // Оперативный отчет по инструктажу за сутки
+  $items['reports/drivers/daily'] = array(
+    'title'            => 'Оперативный отчет по инструктажу за сутки',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('reports_drivers_daily_form'),
+    'access arguments' => array('administer training'),
+    'type'             => MENU_CALLBACK,
+  );
+  // Вспомогательные страницы autocomplete
+  $items['reports/drivers/autocomplete'] = array(
+    'page callback' => 'reports_drivers_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Главная страница отчетов.
+ * @return string
+ */
+function reports_drivers_main_page() {
+
+  $items['items'] = array(
+    l('Отчет по статистике изучения документа', 'reports/drivers/stat'),
+    l('Персональный отчет машиниста по изучению документа', 'reports/drivers/personal'),
+    l('Оперативный отчет по инструктажу за сутки', 'reports/drivers/daily'),
+  );
+
+  return theme('item_list', $items);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Формы создания отчетов
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Форма для отчетов по статистике изучения документа
+ * @param $form
+ * @param $form_state
+ */
+function reports_drivers_stat_form($form, &$form_state) {
+
+}
+
+/**
+ * Форма для персональных отчетов
+ * @param $form
+ * @param $form_state
+ */
+function reports_drivers_personal_form($form, &$form_state) {
+  $format = 'Y-m-d';
+
+  if (isset($_GET['start_date'])) {
+    $start_date = $_GET['start_date'];
+  } else {
+    $start_date = time();
+  }
+
+  if (isset($_GET['end_date'])) {
+    $end_date = $_GET['end_date'];
+  } else {
+    $end_date = time();
+  }
+
+  if (isset($_GET['user'])) {
+    $user = $_GET['user'];
+  } else {
+    $user = '';
+  }
+
+  $form = array();
+
+  $form['standard']['first-col']['fullname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Укажите ФИО'),
+    '#size' => 100,
+    '#default_value' => $user,
+    '#autocomplete_path' => 'reports/drivers/autocomplete',
+  );
+
+  $form['start_date'] = array(
+    '#type' => 'date_popup',
+    '#title' => t('Start date'),
+    '#default_value' => date($format, $start_date),
+    '#date_format' => $format,
+    '#date_label_position' => 'within',
+    '#date_increment' => 15,
+    '#date_year_range' => '-3:+3',
+    '#datepicker_options' => array(),
+  );
+
+  $form['end_date'] = array(
+    '#type' => 'date_popup',
+    '#title' => t('End date'),
+    '#default_value' => date($format, $end_date),
+    '#date_format' => $format,
+    '#date_label_position' => 'within',
+    '#date_increment' => 15,
+    '#date_year_range' => '-3:+3',
+    '#datepicker_options' => array(),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Сформировать отчет'),
+  );
+
+  if (isset($_GET['start_date'])) {
+    $form['table'] = array(
+      '#markup' => reports_drivers_personal_output($user, $start_date, $end_date),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function reports_drivers_personal_form_submit($form, &$form_state) {
+  $start_date = strtotime($form_state['values']['start_date']);
+  $end_date = strtotime($form_state['values']['end_date']);
+
+  $form_state['redirect'] = array(
+    'reports/drivers/personal',
+    array(
+      'query' => array(
+        'user' => $form_state['values']['fullname'],
+        'start_date' => $start_date,
+        'end_date' => $end_date,
+      ),
+    ),
+  );
+}
+
+/**
+ * @param $user
+ * @param $start_date
+ * @param $end_date
+ *
+ * @return string
+ */
+function reports_drivers_personal_output($user, $start_date, $end_date) {
+  $docs = reports_drivers_docs($user, $start_date, $end_date);
+  dpm($docs);
+}
+
+function reports_drivers_docs($user, $start_date, $end_date) {
+  $flag_signup = flag_get_flag('signup');
+
+  $query = db_select('field_data_field_user_full_name', 'ufn');
+  $query->join('flag_content', 'f', 'ufn.entity_id = f.uid');
+  $query->join('node', 'n', 'n.nid = f.content_id');
+  $db_and = db_and();
+  $db_and->condition('field_user_full_name_value', $user);
+  $db_and->condition('f.fid', $flag_signup->fid);
+  $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
+  $query->condition($db_and);
+  $query->distinct();
+  $query->addField('n', 'title', 'course_name');
+  $query->addField('f', 'uid', 'uid');
+  $query->addField('f', 'timestamp', 'timestamp');
+  $query->addField('f', 'fid', 'fid');
+  $result = $query->execute()->fetchAll();
+
+  return $result;
+}
+
+/**
+ * Форма для оперативных отчетов
+ * @param $form
+ * @param $form_state
+ */
+function reports_drivers_daily_form($form, &$form_state) {
+
+}
+
+/**
+ * Автокомплит для поиска машинистов
+ * @param $string
+ */
+function reports_drivers_autocomplete($string) {
+  // ID локомотивных бригад
+  $gids = array(144, 145, 146);
+
+  $query = db_select('field_data_field_user_full_name', 'ufn');
+  $query->join('og_membership', 'om', 'ufn.entity_id = om.etid');
+  $query->join('og', 'o', 'o.gid = om.gid');
+  $query->fields('o', array('label'));
+  $query->fields('ufn', array('field_user_full_name_value', 'entity_id'));
+  $query->condition('ufn.field_user_full_name_value', '%' . db_like($string) . '%', 'LIKE');
+  $query->condition('om.gid', $gids, 'IN');
+  $query->range(0, 20);
+  $result = $query->execute()->fetchAll();
+  $matches = array();
+  foreach ($result as $row) {
+    $matches[$row->field_user_full_name_value] = check_plain($row->field_user_full_name_value) . '<span style="color: #999">&nbsp;|&nbsp;' . check_plain($row->label) . '</span>';
+  }
+
+  drupal_json_output($matches);
+}

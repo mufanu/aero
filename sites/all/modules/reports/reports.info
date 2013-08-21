@@ -1,8 +1,11 @@
 name = Training center reports
-description = 3 типа отчета для Учебного центра
+description = 4 типа отчета для Учебного центра
+package = "Reports"
 core = 7.x
 
 stylesheets[all][] = reports.css
 
 dependencies[] = date
 dependencies[] = date_popup
+
+version = "7.x-1.0"

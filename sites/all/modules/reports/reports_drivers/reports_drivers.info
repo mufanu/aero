@@ -1,0 +1,11 @@
+name = Training center drivers reports
+description = 3 типа отчета по инструктажу машинистов
+package = "Reports"
+core = 7.x
+
+stylesheets[all][] = reports2.css
+
+dependencies[] = date
+dependencies[] = date_popup
+
+version = "7.x-1.0"
