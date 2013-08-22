@@ -398,7 +398,7 @@ function ldap_sync_mail($key, &$message, $params) {
     $message['body'][] = $params['body'];
   }
   if (isset($params['headers']) && is_array($params['headers'])) {
-    //$message['headers'] += $params['headers'];
+    $message['headers'] += $params['headers'];
     $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
     //dpm($message);
   }
@@ -416,7 +416,7 @@ function ldap_sync_sent_mail($to) {
   // Cc or Bcc, then make sure that suhosin.mail.protect is not set to 2,
   // or the mail will be rejected as an attack.
   //$header_bcc = 'admin@appri.ru';
-  $header_cc = 'i.prokofeva@aeroexpress.ru';
+  $header_cc = 'i.prokofeva@aeroexpress.ru, M.Yaroshevich@aeroexpress.ru';
   $subject = 'Приветствуем, Вас коллега!';
   // you can set 'message_key' to any key you want, and process
   // that in the hook_mail as shown in the commented out code.
@@ -427,7 +427,6 @@ function ldap_sync_sent_mail($to) {
   // by just setting the Content-Type.
   // Build the default headers
   $headers = array(
-
     'Cc' => $header_cc
   );
   $message = drupal_mail(
@@ -435,5 +434,5 @@ function ldap_sync_sent_mail($to) {
     array('body' => render($body['value']), 'subject' => $subject, 'headers' => $headers, $from, TRUE)
   );
   // You can check $message['result'] to see if the message sent successfully.
-  //dpm($message['result']);
+  dpm($message['result']);
 }
