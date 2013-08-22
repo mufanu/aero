@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function ldap_sync_install() {
+  variable_set('mail_system', array('default-system' => 'DefaultMailSystem', 'ldap_sync' => 'LdapSyncMailSystem'));
+  variable_set('ldap_sync_mail', array('value' => '', 'format' => ''));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ldap_sync_uninstall() {
+  variable_del('mail_system');
+  variable_del('ldap_sync_mail');
+}

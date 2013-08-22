@@ -8,31 +8,51 @@ module_load_include('php', 'ldap_query', 'LdapQuery.class');
 
 /**
  * Implements hook_menu
+ *
  * @return mixed
  */
 function ldap_sync_menu() {
-	$items['admin/config/people/ldap/sync'] = array(
-		'title' => t('Synchronization'),
-		'page callback' => 'ldap_sync_index',
-		'access arguments' => array('access content'),
-		'weight' => 6,
-    'type' => MENU_LOCAL_TASK,
-		'file' => 'ldap_sync.admin.inc',
-	);
-	$items['sync'] = array(
-		'title' => t('Синхронизация пользователей'),
-		'page callback' => 'ldap_sync_page',
-		'access arguments' => array('access content'), 
-    'type' => MENU_CALLBACK,
-	);
-	$items['sync/info'] = array(
-		'title' => t('Синхронизация пользователей'),
-		'page callback' => 'ldap_sync_get_info',
-		'access arguments' => true,
-    'type' => MENU_CALLBACK,
-	);
-	
-	return $items;
+  $items['admin/config/people/ldap/sync'] = array(
+    'title'            => 'Synchronization',
+    'page callback'    => 'ldap_sync_index',
+    'access arguments' => array('access content'),
+    'weight'           => 6,
+    'type'             => MENU_LOCAL_TASK,
+    'file'             => 'ldap_sync.admin.inc',
+  );
+  $items['sync'] = array(
+    'title'            => 'Synchronization',
+    'page callback'    => 'ldap_sync_page',
+    'access arguments' => array('access content'),
+    'type'             => MENU_NORMAL_ITEM,
+  );
+  $items['sync/info'] = array(
+    'title'            => 'Synchronization',
+    'page callback'    => 'ldap_sync_get_info',
+    'access arguments' => array('manual sync'),
+    'type'             => MENU_CALLBACK,
+  );
+  $items['sync/mail'] = array(
+    'title'            => 'Приветственное письмо',
+    'page callback'    => 'ldap_sync_mail_view',
+    'access arguments' => array('edit greeting mail'),
+    'type'             => MENU_LOCAL_TASK,
+  );
+  $items['sync/mail/edit'] = array(
+    'title' => 'Редактирование приветственного письма',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('ldap_sync_mail_form'),
+    'access arguments' => array('edit greeting mail'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['sync/mail/test'] = array(
+    'title' => 'Mail',
+    'page callback'    => 'ldap_sync_mail_test',
+    'access arguments' => array('edit greeting mail'),
+    'type'  => MENU_LOCAL_TASK,
+  );
+
+  return $items;
 }
 
 /**
@@ -42,96 +62,110 @@ function ldap_sync_cron() {
   ldap_sync_get_info();
 }
 
-/*
+function ldap_sync_permissions() {
+  return array(
+    'manual sync'        => array(
+      'title'       => t('Ручная синхронизация'),
+      'description' => t('Позволяет произвести принудительную синхронизацию не дожидаясь выполнения крона.'),
+    ),
+    'edit greeting mail' => array(
+      'title'       => t('Редактирование приветственного письма'),
+      'description' => t('Доступ для редактирования приветственного письма'),
+    ),
+  );
+}
+
+/**
  * Главная страница модуля синхронизации.
  */
 function ldap_sync_page() {
-	$output = '';
-	$output .= '<p>Синхронизация пользователей с Active Directory aero-express.ru</p>';
-	$output .= render(drupal_get_form('ldap_sync_form'));
-	return $output;
+  $output = '';
+  $output .= '<p>Синхронизация пользователей с Active Directory aero-express.ru</p>';
+  $output .= render(drupal_get_form('ldap_sync_form'));
+  return $output;
 }
 
 /*
  * Кнопка проверки информации
  */
 function ldap_sync_form($form, &$form_state) {
-	$form['wrapper']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Обновить'),
-		'#submit' => array('ldap_sync_form_submit'),
+  $form['wrapper']['submit'] = array(
+    '#type'   => 'submit',
+    '#value'  => t('Обновить'),
+    '#submit' => array('ldap_sync_form_submit'),
   );
-	
-	return $form;
+
+  return $form;
 }
 
 function ldap_sync_form_submit() {
-	drupal_goto('sync/info');
+  drupal_goto('sync/info');
 }
 
 /**
  * Обращение к АД и сопоставление пользователей АД с пользователями Drupal.
  */
 function ldap_sync_get_info() {
-	$output = '';
-	// Запрос к AD через уже созданный запрос в модуле ldap_query
-	$current = variable_get(CURRENT_USERS);
-	$fired = variable_get(FIRED_USERS);
-	$current_query = new LdapQuery($current);
-	$current_results = $current_query->query();
-	$fired_query = new LdapQuery($fired);
-	$fired_results = $fired_query->query();
-	//dpm($fired_results);
-	// Превый элемент показывает количество результатов, он нам не нужен.
-	$current_results = array_slice($current_results, 1);
-	$fired_results = array_slice($fired_results, 1);
-	foreach ($current_results as $current_result) {
-		//dpm($ldap_result);
-		// Имя пользователя, т.е. логин в AD.
-		$name = $current_result['samaccountname'][0];
-		// Атрибут когда была изменена учетная запись пользователя.
-		//$whenchanged = ldap_sync_timestamp($ldap_result['whenchanged'][0]);
-		// Id пользователя drupal, если он уже есть.
-		$drupal_user_id = ldap_sync_get_uid($name);
-		$dn = $current_result['distinguishedname'][0];
-		// distinguishedname - передается в полном виде, нам нужно его разбить на массив по запятым
-		// и получить второй элемент массива - это будет подразделение сотрудника.
-		// Разбиваем строку на массив
-		$department_exploded_array = explode(",", $dn);
-		// Срезаем первый элемент (это CN) и переворачиваем массив
-		$department_reversed_array = array_reverse(array_slice($department_exploded_array, 1));
-		// Срезаем первые два элемента массива - это DC=ru и DC=aero-express.
-		$department_array = array_slice($department_reversed_array, 2);
-		// Выводить будем иерархическую структуру подразделения для сотрудника.
-		$department_output = '';
-		foreach ($department_array as $ou) {
-			$department_output .= $ou . '<br />';
-		}
-		// Подразделение где находиться сотрудник
-		$department = substr($department_exploded_array[1], 3);
-		//dpm($department);
-		$group_id = ldap_sync_get_gid($department);
-		// Есть ли данный сотрудник в БД {users} потрала?
-		if ($drupal_user_id) {
-			ldap_sync_create_user($current_result, $group_id, $drupal_user_id);
-			//$output .= ldap_sync_create_user($current_result, $group_id, $drupal_user_id) . '<br />';
-		} else {
-			//$output .= '<b>Новые пользователи:</b><br />';
-			ldap_sync_create_user($current_result, $group_id);
-			//$output .= ldap_sync_create_user($current_result, $group_id) . '<br />';
-		}
-	}
-	
-	// Блокируем уволенных сотрудников
-	foreach ($fired_results as $fired_result) {
-		$name = $fired_result['samaccountname'][0];
-		$drupal_user_id = ldap_sync_get_uid($name, 1);
-		if ($drupal_user_id) {
-			$output .= '<span style="color:red">' . ldap_sync_dis_user($drupal_user_id) . '</span>';
-		}
-	}	
-	
-	return $output;
+  $output = '';
+  // Запрос к AD через уже созданный запрос в модуле ldap_query
+  $current = variable_get(CURRENT_USERS);
+  $fired = variable_get(FIRED_USERS);
+  $current_query = new LdapQuery($current);
+  $current_results = $current_query->query();
+  $fired_query = new LdapQuery($fired);
+  $fired_results = $fired_query->query();
+  //dpm($fired_results);
+  // Превый элемент показывает количество результатов, он нам не нужен.
+  $current_results = array_slice($current_results, 1);
+  $fired_results = array_slice($fired_results, 1);
+  foreach ($current_results as $current_result) {
+    //dpm($ldap_result);
+    // Имя пользователя, т.е. логин в AD.
+    $name = $current_result['samaccountname'][0];
+    // Атрибут когда была изменена учетная запись пользователя.
+    //$whenchanged = ldap_sync_timestamp($ldap_result['whenchanged'][0]);
+    // Id пользователя drupal, если он уже есть.
+    $drupal_user_id = ldap_sync_get_uid($name);
+    $dn = $current_result['distinguishedname'][0];
+    // distinguishedname - передается в полном виде, нам нужно его разбить на массив по запятым
+    // и получить второй элемент массива - это будет подразделение сотрудника.
+    // Разбиваем строку на массив
+    $department_exploded_array = explode(",", $dn);
+    // Срезаем первый элемент (это CN) и переворачиваем массив
+    $department_reversed_array = array_reverse(array_slice($department_exploded_array, 1));
+    // Срезаем первые два элемента массива - это DC=ru и DC=aero-express.
+    $department_array = array_slice($department_reversed_array, 2);
+    // Выводить будем иерархическую структуру подразделения для сотрудника.
+    $department_output = '';
+    foreach ($department_array as $ou) {
+      $department_output .= $ou . '<br />';
+    }
+    // Подразделение где находиться сотрудник
+    $department = substr($department_exploded_array[1], 3);
+    //dpm($department);
+    $group_id = ldap_sync_get_gid($department);
+    // Есть ли данный сотрудник в БД {users} потрала?
+    if ($drupal_user_id) {
+      ldap_sync_create_user($current_result, $group_id, $drupal_user_id);
+      //$output .= ldap_sync_create_user($current_result, $group_id, $drupal_user_id) . '<br />';
+    }
+    else {
+      //$output .= '<b>Новые пользователи:</b><br />';
+      ldap_sync_create_user($current_result, $group_id);
+      //$output .= ldap_sync_create_user($current_result, $group_id) . '<br />';
+    }
+  }
+
+  // Блокируем уволенных сотрудников
+  foreach ($fired_results as $fired_result) {
+    $name = $fired_result['samaccountname'][0];
+    $drupal_user_id = ldap_sync_get_uid($name, 1);
+    if ($drupal_user_id) {
+      $output .= '<span style="color:red">' . ldap_sync_dis_user($drupal_user_id) . '</span>';
+    }
+  }
+
+  return $output;
 }
 
 /**
@@ -185,38 +219,38 @@ function ldap_sync_create_user($ldapaccount, $gid, $uid = FALSE) {
 
   user_save($account);
   if (!$uid) {
-    //ldap_sync_sent_mail($mail);
+    ldap_sync_sent_mail($mail);
   }
 
 }
 
 function ldap_sync_dis_user($uid) {
-	
-	$account = user_load($uid);
-	
-	$account->status = '0';
-	
-	user_save($account);
-	
-	return $account->field_user_full_name['und'][0]['value'];
+
+  $account = user_load($uid);
+
+  $account->status = '0';
+
+  user_save($account);
+
+  return $account->field_user_full_name['und'][0]['value'];
 }
 
 /*
  * Кнопка импорта новых ползователей
  */
 function ldap_sync_import_form($form, &$form_state) {
-	$form['newusers'] = array (
-		'#type' => 'value',
-		'#value' => $new_users2,
-	);
-	
-	$form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Импорт'),
-		'#submit' => array('ldap_sync_create_user'),
+  $form['newusers'] = array(
+    '#type'  => 'value',
+    '#value' => $new_users2,
   );
-	
-	return $form;
+
+  $form['submit'] = array(
+    '#type'   => 'submit',
+    '#value'  => t('Импорт'),
+    '#submit' => array('ldap_sync_create_user'),
+  );
+
+  return $form;
 }
 
 
@@ -224,7 +258,7 @@ function ldap_sync_import_form($form, &$form_state) {
  * Импорт новых пользователей
  */
 function ldap_sync_import_form_submit() {
-	drupal_goto('user/sync/import');
+  drupal_goto('user/sync/import');
 }
 
 
@@ -233,89 +267,141 @@ function ldap_sync_import_form_submit() {
  * $op = 'update' or 'insert'.
  */
 function ldap_sync_table_save($user_object, $op) {
-	if ($op == 'update') {
-		$update = db_update('ldap_sync')
-		->condition('uid', $user_object['uid'])
-		->fields(array(
-			'name' => $user_object['name'],
-			'whenchanged' => $user_object['whenchanged'],
-		))
-		->execute();
-	} elseif ($op == 'insert') {
-		$insert = db_insert('ldap_sync')
-		->fields(array(
-			'uid' => $user_object['uid'],
-			'name' => $user_object['name'],
-			'whenchanged' => $user_object['whenchanged'],
-		))
-		->execute();
-	}
+  if ($op == 'update') {
+    $update = db_update('ldap_sync')
+      ->condition('uid', $user_object['uid'])
+      ->fields(
+        array(
+             'name'        => $user_object['name'],
+             'whenchanged' => $user_object['whenchanged'],
+        )
+      )
+      ->execute();
+  }
+  elseif ($op == 'insert') {
+    $insert = db_insert('ldap_sync')
+      ->fields(
+        array(
+             'uid'         => $user_object['uid'],
+             'name'        => $user_object['name'],
+             'whenchanged' => $user_object['whenchanged'],
+        )
+      )
+      ->execute();
+  }
 }
 
 /*
  * Функция получает uid пользователя по его имени.
  */
 function ldap_sync_get_uid($name, $status = FALSE) {
-	if ($status) {
-		$condition = db_and()
-		->condition('u.status', $status)
-		->condition('u.name', $name);
-	} else {
-		$condition = db_and()
-		->condition('u.name', $name);
-	}
-	$query = db_select('users', 'u')
-	->condition($condition)
-	->fields('u', array('uid'))
-	->execute()
-	->fetchField();
-	
-	return $query;
+  if ($status) {
+    $condition = db_and()
+      ->condition('u.status', $status)
+      ->condition('u.name', $name);
+  }
+  else {
+    $condition = db_and()
+      ->condition('u.name', $name);
+  }
+  $query = db_select('users', 'u')
+    ->condition($condition)
+    ->fields('u', array('uid'))
+    ->execute()
+    ->fetchField();
+
+  return $query;
 }
 
 /*
  * Функция переводить время в unixtime.
  */
 function ldap_sync_timestamp($time) {
-	$temp = substr($time, 0, 14);
-	$year = substr($temp, 0, 4);
-	$month = substr($temp, 4, 2);
-	$day = substr($temp, 6, 2);
-	$hour = substr($temp, 8, 2);
-	$minute = substr($temp, 10, 2);
-	$second = substr($temp, 12, 2);
-	
-	$timestamp = mktime($hour, $minute, $second, $month, $day, $year);
-	
-	return $timestamp;
+  $temp = substr($time, 0, 14);
+  $year = substr($temp, 0, 4);
+  $month = substr($temp, 4, 2);
+  $day = substr($temp, 6, 2);
+  $hour = substr($temp, 8, 2);
+  $minute = substr($temp, 10, 2);
+  $second = substr($temp, 12, 2);
+
+  $timestamp = mktime($hour, $minute, $second, $month, $day, $year);
+
+  return $timestamp;
 }
 
 /*
  * Получить gid группы
  */
 function ldap_sync_get_gid($label) {
-	$query = db_select('og', 'o')
-	->condition('o.label', $label)
-	->fields('o', array('gid'))
-	->execute()
-	->fetchField();
-	
-	return $query;
+  $query = db_select('og', 'o')
+    ->condition('o.label', $label)
+    ->fields('o', array('gid'))
+    ->execute()
+    ->fetchField();
+
+  return $query;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Реализация отправки приветственного письма новым пользователям портала.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function ldap_sync_mail_form($form, &$form_state) {
+  $body = variable_get('ldap_sync_mail');
+
+  $form['description'] = array(
+    '#type'          => 'text_format',
+    '#title'         => t('Текст приветственного письма'),
+    '#default_value' => $body['value'],
+    '#format'        => 'full_html',
+    '#weight'        => 0,
+  );
+
+  $form['submit'] = array(
+    '#type'  => 'submit',
+    '#value' => t('Сохранить'),
+  );
+
+  return $form;
+}
+
+function ldap_sync_mail_form_submit($form, &$form_state) {
+  variable_set('ldap_sync_mail', $form_state['values']['description']);
+  $form_state['redirect'] = array(
+    'sync/mail',
+  );
+}
+
+/**
+ * Страница просмотра приветственного письма.
+ * @return bool|string
+ */
+function ldap_sync_mail_view() {
+  $body = variable_get('ldap_sync_mail');
+  return render($body['value']);
+}
+
+function ldap_sync_mail_test() {
+  ldap_sync_sent_mail('mufanu@gmail.com');
+  return TRUE;
 }
 
 /**
  * Implements hook_mail.
  */
 function ldap_sync_mail($key, &$message, $params) {
-    if (isset($params['subject'])) {
-      $message['subject'] = $params['subject'];
-    }
-    if (isset($params['body'])) {
-      $message['body'][] = $params['body'];
-    }
-    if (isset($params['headers']) && is_array($params['headers'])) {
-      $message['headers'] += $params['headers'];
-    }
+  if (isset($params['subject'])) {
+    $message['subject'] = $params['subject'];
+  }
+  if (isset($params['body'])) {
+    $message['body'][] = $params['body'];
+  }
+  if (isset($params['headers']) && is_array($params['headers'])) {
+    //$message['headers'] += $params['headers'];
+    $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+    //dpm($message);
+  }
 }
 
 /**
@@ -324,14 +410,14 @@ function ldap_sync_mail($key, &$message, $params) {
  */
 function ldap_sync_sent_mail($to) {
   global $user;
-  $body = 'Здесь будет текст приветственного письма';
+  $body = variable_get('ldap_sync_mail');
   $from = 'info@aeroportal.aero-express.ru';
   // If you are using suhosin (the hardened PHP extension) and want to use
   // Cc or Bcc, then make sure that suhosin.mail.protect is not set to 2,
   // or the mail will be rejected as an attack.
   //$header_bcc = 'admin@appri.ru';
   $header_cc = 'i.prokofeva@aeroexpress.ru';
-  $subject = 'Приветственное письмо';
+  $subject = 'Приветствуем, Вас коллега!';
   // you can set 'message_key' to any key you want, and process
   // that in the hook_mail as shown in the commented out code.
   // Or, just set it to some string and ignore it as we are here.
@@ -339,7 +425,15 @@ function ldap_sync_sent_mail($to) {
   // are trying to send an HTML formatted email, please use either
   // the MIME Mail or HTMLMail modules, rather than doing it
   // by just setting the Content-Type.
-  $message = drupal_mail('ldap_sync', 'message_key', $to, user_preferred_language($user), array('body' => $body, 'subject' => $subject, 'headers' => array('Cc' => $header_cc), $from, TRUE));
+  // Build the default headers
+  $headers = array(
+
+    'Cc' => $header_cc
+  );
+  $message = drupal_mail(
+    'ldap_sync', 'message_key', $to, user_preferred_language($user),
+    array('body' => render($body['value']), 'subject' => $subject, 'headers' => $headers, $from, TRUE)
+  );
   // You can check $message['result'] to see if the message sent successfully.
   //dpm($message['result']);
 }

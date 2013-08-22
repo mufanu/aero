@@ -1,7 +1,12 @@
 name = LDAP Sync
 description = Синхронизация пользователей с AD
-core = 7.x
 package = "Lightweight Directory Access Protocol"
+core = 7.x
+
+files[] = LdapSync.class.php
+files[] = ldap_sync.install
+
+
 dependencies[] = ldap_query
 
 stylesheets[all][] = ldap_sync.css
