@@ -263,7 +263,7 @@ function reports_drivers_daily_output() {
     return reports_drivers_daily_table($data);
 
   } else {
-    return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
+    return '<div id="no-results">Нет результатов</div>';
   }
 
 }
@@ -454,6 +454,7 @@ function reports_drivers_daily() {
   $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = f.uid');
   $query->condition('f.fid', $flag_signup->fid);
   $query->condition('f.timestamp', $timestamp, '>');
+  $query->condition('n.type', 'doc_for_drivers');
   $query->addField('ufn', 'field_user_full_name_value', 'user_name');
   $query->addField('f', 'uid', 'uid');
   $query->addField('n', 'title', 'doc_name');
