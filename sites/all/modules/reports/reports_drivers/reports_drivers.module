@@ -55,7 +55,7 @@ function reports_drivers_main_page() {
   $items['items'] = array(
     //l('Отчет по статистике изучения документа', 'reports/drivers/stat'),
     l('Персональный отчет машиниста по изучению документа', 'reports/drivers/personal'),
-    //l('Оперативный отчет по инструктажу за сутки', 'reports/drivers/daily'),
+    l('Оперативный отчет по инструктажу за сутки', 'reports/drivers/daily'),
   );
 
   return theme('item_list', $items);
@@ -234,7 +234,6 @@ function reports_drivers_personal_output($user, $start_date, $end_date) {
   $data = reports_drivers_docs($user, $start_date, $end_date);
 
   if ($data) {
-
     foreach ($data as $key => $item) {
       $quiz_result = reports_drivers_quiz_result($item->doc_id, $item->uid);
       $data[$key]->quiz_passed = $quiz_result->is_passed;
@@ -248,15 +247,25 @@ function reports_drivers_personal_output($user, $start_date, $end_date) {
   }
 }
 
+/**
+ * Подготовка данных для оперативных отчетов за сутки
+ * @return string
+ */
 function reports_drivers_daily_output() {
-  $today = date('d.m.Y');
-  dpm($today);
-  $query = db_select('flag_content', 'f')
-    ->where('timestamp > curdate()')
-    ->fields('f')
-    ->execute()
-    ->fetchAll();
-  //dpm($query);
+  $data = reports_drivers_daily();
+
+  if ($data) {
+    foreach ($data as $key => $item) {
+      $quiz_result = reports_drivers_quiz_result($item->doc_id, $item->uid);
+      $data[$key]->quiz_passed = $quiz_result->is_passed;
+    }
+
+    return reports_drivers_daily_table($data);
+
+  } else {
+    return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
+  }
+
 }
 
 
@@ -337,6 +346,72 @@ function reports_drivers_personal_table($data) {
 }
 
 /**
+ * @param $data
+ *
+ * @return string
+ */
+function reports_drivers_daily_table($data) {
+  //Дальше создаем таблицу и выводим полученные данные
+  // Создаем   заголовок таблицы
+  $caption = t('Оперативный отчет по инструктажу за сутки <br > Дата отчета:' . date('d.m.Y', time()));
+  // Создаем заголовки столбцов
+  $header = array(
+    array(
+      'data' => t('№'),
+    ),
+    array(
+      'data' => t('ФИО'),
+    ),
+    array(
+      'data' => t('Название документа'),
+    ),
+    array(
+      'data' => t('Дата подписки'),
+    ),
+    array(
+      'data' => t('Дата сдачи'),
+    ),
+  );
+
+  foreach ($data as $key => $item) {
+    $rows[] = array(
+      array(
+        'data' => $key + 1,
+      ),
+      array(
+        'data' => $item->user_name,
+      ),
+      array(
+        'data' => $item->doc_name,
+      ),
+      array(
+        'data' => date('d.m.Y', $item->signup_time),
+      ),
+      array(
+        'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
+      ),
+    );
+  }
+
+  $excel = reports_drivers_export_xlsx($header, $rows, 'blank_3.xlsx');
+  $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
+
+  $output .= theme('table', array(
+                                 // Шапка таблицы
+                                 'header' => $header,
+                                 // Тело таблицы
+                                 'rows' => $rows,
+                                 // Заголовок таблицы
+                                 'caption' => $caption,
+                                 // Атрибуты таблицы
+                                 'attributes' => array('width' => '100%', 'class' => array('reports')),
+                            )
+  );
+
+  return $output;
+}
+
+/**
  * Получаем документы, на которые подписан пользователь за указанный период
  * @param $user
  * @param $start_date
@@ -359,6 +434,30 @@ function reports_drivers_docs($user, $start_date, $end_date) {
   $query->addField('n', 'nid', 'doc_id');
   $query->addField('n', 'created', 'doc_created');
   $query->addField('f', 'uid', 'uid');
+  $query->addField('f', 'timestamp', 'signup_time');
+  $result = $query->execute()->fetchAll();
+
+  return $result;
+}
+
+/**
+ * Получаем данные за текущий день.
+ * @return mixed
+ */
+function reports_drivers_daily() {
+  $flag_signup = flag_get_flag('signup');
+  $today = date('d.m.Y');
+  $timestamp = strtotime($today);
+
+  $query = db_select('flag_content', 'f');
+  $query->join('node', 'n', 'n.nid = f.content_id');
+  $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = f.uid');
+  $query->condition('f.fid', $flag_signup->fid);
+  $query->condition('f.timestamp', $timestamp, '>');
+  $query->addField('ufn', 'field_user_full_name_value', 'user_name');
+  $query->addField('f', 'uid', 'uid');
+  $query->addField('n', 'title', 'doc_name');
+  $query->addField('n', 'nid', 'doc_id');
   $query->addField('f', 'timestamp', 'signup_time');
   $result = $query->execute()->fetchAll();
 
