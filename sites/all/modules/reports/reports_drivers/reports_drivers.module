@@ -188,10 +188,10 @@ function reports_drivers_stat_preview($caption, $headers, $doc_id, $start_date, 
           'data' => $row->user_name,
         ),
         array(
-          'data' => date('d.m.Y', $row->signup_time),
+          'data' => date(REPORTS_DATE_FORMAT, $row->signup_time),
         ),
         array(
-          'data' => ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+          'data' => ($row->quiz_passed) ? date(REPORTS_DATE_FORMAT, $row->quiz_passed) : 'Не сдан',
         ),
         array(
           'data' => $row->quiz_count,
@@ -251,10 +251,10 @@ function reports_drivers_personal_preview($caption, $headers, $user, $start_date
           'data' => $item->doc_name,
         ),
         array(
-          'data' => date('d.m.Y', $item->signup_time),
+          'data' => date(REPORTS_DATE_FORMAT, $item->signup_time),
         ),
         array(
-          'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
+          'data' => ($item->quiz_passed) ? date(REPORTS_DATE_FORMAT, $item->quiz_passed) : 'Не сдан',
         ),
         array(
           'data' => $item->quiz_count,
@@ -313,10 +313,10 @@ function reports_drivers_daily_preview($caption, $headers, $date) {
           'data' => $row->doc_name,
         ),
         array(
-          'data' => date('d.m.Y', $row->signup_time),
+          'data' => date(REPORTS_DATE_FORMAT, $row->signup_time),
         ),
         array(
-          'data' => ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+          'data' => ($row->quiz_passed) ? date(REPORTS_DATE_FORMAT, $row->quiz_passed) : 'Не сдан',
         ),
       );
     }
@@ -584,8 +584,8 @@ function reports_drivers_stat_export($form, $form_state) {
       $rows[$key] = array(
         $key + 1,
         $row->user_name,
-        date('d.m.Y', $row->signup_time),
-        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        date(REPORTS_DATE_FORMAT, $row->signup_time),
+        ($row->quiz_passed) ? date(REPORTS_DATE_FORMAT, $row->quiz_passed) : 'Не сдан',
         $row->quiz_count,
         round($row->overdue / 86400),
       );
@@ -618,8 +618,8 @@ function reports_drivers_personal_export($form, $form_state) {
       $rows[$key] = array(
         $key + 1,
         $row->doc_name,
-        date('d.m.Y', $row->signup_time),
-        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        date(REPORTS_DATE_FORMAT, $row->signup_time),
+        ($row->quiz_passed) ? date(REPORTS_DATE_FORMAT, $row->quiz_passed) : 'Не сдан',
         $row->quiz_count,
         round($row->overdue / 86400),
       );
@@ -651,8 +651,8 @@ function reports_drivers_daily_export($form, $form_state) {
         $key + 1,
         $row->user_name,
         $row->doc_name,
-        date('d.m.Y', $row->signup_time),
-        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        date(REPORTS_DATE_FORMAT, $row->signup_time),
+        ($row->quiz_passed) ? date(REPORTS_DATE_FORMAT, $row->quiz_passed) : 'Не сдан',
       );
     }
 
