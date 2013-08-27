@@ -18,6 +18,7 @@ function reports_drivers_menu() {
     'page arguments'   => array('reports_drivers_stat_form'),
     'access arguments' => array('access reports for drivers'),
     'type'             => MENU_CALLBACK,
+    'file'             => 'reports_drivers.forms.inc',
   );
   // Персональный отчет машиниста по изучению документа
   $items['reports/drivers/personal'] = array(
@@ -26,6 +27,7 @@ function reports_drivers_menu() {
     'page arguments'   => array('reports_drivers_personal_form'),
     'access arguments' => array('access reports for drivers'),
     'type'             => MENU_CALLBACK,
+    'file'             => 'reports_drivers.forms.inc'
   );
 
   // Оперативный отчет по инструктажу за сутки
@@ -35,6 +37,7 @@ function reports_drivers_menu() {
     'page arguments'   => array('reports_drivers_daily_form'),
     'access arguments' => array('access reports for drivers'),
     'type'             => MENU_CALLBACK,
+    'file'             => 'reports_drivers.forms.inc',
   );
   // Вспомогательные страницы autocomplete
   $items['reports/drivers/autocomplete'] = array(
@@ -76,310 +79,32 @@ function reports_drivers_permission() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Формы создания отчетов
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Форма для отчетов по статистике изучения документа
- * @param $form
- * @param $form_state
- */
-function reports_drivers_stat_form($form, &$form_state) {
-  // При первой отправке формы $_GET['direction'] будет пуст и поэтому берем данные с
-  // $form_state['values']['fields']['direction']
-  if (isset($_GET['direction'])) {
-    $direction_id = $_GET['direction'];
-  } else {
-    $direction_id = isset($form_state['values']['fields']['direction']) ? $form_state['values']['fields']['direction']
-      : null;
-  }
-
-  // При первой отправке формы $_GET['doc'] будет пуст и поэтому берем данные с
-  // $form_state['values']['fields']['doc']
-  if (isset($_GET['doc'])) {
-    $doc_id = $_GET['doc'];
-  } else {
-    $doc_id = isset($form_state['values']['fields']['doc']) ? $form_state['values']['fields']['doc'] : null;
-  }
-
-  if (isset($_GET['start_date'])) {
-    $start_date = $_GET['start_date'];
-  }
-
-  if (isset($_GET['end_date'])) {
-    $end_date = $_GET['end_date'];
-  }
-
-  // Враппер для селектов
-  $form['fields'] = array(
-    '#tree'   => TRUE,
-    '#prefix' => '<div id="fields">',
-    '#suffix' => '</div>',
-  );
-  $options = array('' => '- Выберите -');
-  $options += reports_drivers_directions();
-
-
-
-
-  $form['fields']['direction'] = array(
-    '#type'    => 'select',
-    '#title'   => t('Выберите направление'),
-    '#options' => $options,
-    '#default_value' => $direction_id,
-    '#required' => true,
-    '#ajax'    => array(
-      'callback' => 'reports_drivers_ajax_callback',
-      'wrapper'  => 'fields',
-    ),
-  );
-
-  if (is_numeric($direction_id)) {
-    $docs = array('' => '- Выберите -');
-    $docs += reports_drivers_direction_docs($direction_id);
-    $form['fields']['doc'] = array(
-      '#type'    => 'select',
-      '#title'   => t('Выберите документ'),
-      '#options' => $docs,
-      '#default_value' => $doc_id,
-      '#required' => true,
-      '#ajax'    => array(
-        'callback' => 'reports_drivers_ajax_callback',
-        'wrapper'  => 'fields',
-      ),
-    );
-  }
-
-  if (is_numeric($direction_id) && is_numeric($doc_id)) {
-    $format = 'Y-m-d';
-
-    $query = db_select('node', 'n')
-      ->condition('nid', $doc_id)
-      ->fields('n', array('created'))
-      ->execute()
-      ->fetchField();
-
-    $form['fields']['start_date'] = array(
-      '#type'                => 'date_popup',
-      '#title'               => t('Start date'),
-      '#default_value'       => date($format, $query),
-      '#date_format'         => $format,
-      '#date_label_position' => 'within',
-      '#date_increment'      => 15,
-      '#date_year_range'     => '-3:+3',
-      '#datepicker_options'  => array(),
-      '#required' => true,
-    );
-
-    $form['fields']['end_date'] = array(
-      '#type'                => 'date_popup',
-      '#title'               => t('End date'),
-      '#default_value'       => date($format, time()),
-      '#date_format'         => $format,
-      '#date_label_position' => 'within',
-      '#date_increment'      => 15,
-      '#date_year_range'     => '-3:+3',
-      '#datepicker_options'  => array(),
-      '#required' => true,
-    );
-  }
-
-  $form['submit'] = array(
-    '#type'  => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  $form['export'] = array(
-    '#type'  => 'submit',
-    '#value' => t('Выгрузить в Excel'),
-    '#submit' => array('reports_drivers_stat_export'),
-  );
-
-  if (isset($_GET['direction'])) {
-    $form['table'] = array(
-      '#markup' => reports_drivers_stat_output($doc_id, $start_date, $end_date),
-    );
-  }
-
-  return $form;
-}
-
-function reports_drivers_stat_form_submit($form, &$form_state) {
-  $start_date = strtotime($form_state['values']['fields']['start_date']);
-  $end_date = strtotime($form_state['values']['fields']['end_date']);
-  //dpm($form_state);
-  $form_state['redirect'] = array(
-    'reports/drivers/stat',
-    array(
-      'query' => array(
-        'direction'  => $form_state['values']['fields']['direction'],
-        'doc'        => $form_state['values']['fields']['doc'],
-        'start_date' => $start_date,
-        'end_date'   => $end_date,
-      ),
-    ),
-
-  );
-}
-
-/**
- * AJAX callback
- */
-function reports_drivers_ajax_callback($form, $form_state) {
-  return $form['fields'];
-}
-
-
-/**
- * Форма для персональных отчетов
- * @param $form
- * @param $form_state
- */
-function reports_drivers_personal_form($form, &$form_state) {
-  $format = 'Y-m-d';
-
-  if (isset($_GET['start_date'])) {
-    $start_date = $_GET['start_date'];
-  }
-  else {
-    $start_date = time();
-  }
-
-  if (isset($_GET['end_date'])) {
-    $end_date = $_GET['end_date'];
-  }
-  else {
-    $end_date = time();
-  }
-
-  if (isset($_GET['user'])) {
-    $user = $_GET['user'];
-  }
-  else {
-    $user = '';
-  }
-
-  $form = array();
-
-  $form['standard']['first-col']['fullname'] = array(
-    '#type'              => 'textfield',
-    '#title'             => t('Укажите ФИО'),
-    '#size'              => 100,
-    '#default_value'     => $user,
-    '#autocomplete_path' => 'reports/drivers/autocomplete',
-  );
-
-  $form['start_date'] = array(
-    '#type'                => 'date_popup',
-    '#title'               => t('Start date'),
-    '#default_value'       => date($format, $start_date),
-    '#date_format'         => $format,
-    '#date_label_position' => 'within',
-    '#date_increment'      => 15,
-    '#date_year_range'     => '-3:+3',
-    '#datepicker_options'  => array(),
-  );
-
-  $form['end_date'] = array(
-    '#type'                => 'date_popup',
-    '#title'               => t('End date'),
-    '#default_value'       => date($format, $end_date),
-    '#date_format'         => $format,
-    '#date_label_position' => 'within',
-    '#date_increment'      => 15,
-    '#date_year_range'     => '-3:+3',
-    '#datepicker_options'  => array(),
-  );
-
-  $form['submit'] = array(
-    '#type'  => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['start_date'])) {
-    $form['table'] = array(
-      '#markup' => reports_drivers_personal_output($user, $start_date, $end_date),
-    );
-  }
-
-  return $form;
-}
-
-/**
- * @param $form
- * @param $form_state
- */
-function reports_drivers_personal_form_submit($form, &$form_state) {
-  $start_date = strtotime($form_state['values']['start_date']);
-  $end_date = strtotime($form_state['values']['end_date']);
-
-  $form_state['redirect'] = array(
-    'reports/drivers/personal',
-    array(
-      'query' => array(
-        'user'       => $form_state['values']['fullname'],
-        'start_date' => $start_date,
-        'end_date'   => $end_date,
-      ),
-    ),
-  );
-}
-
-/**
- * Форма для оперативных отчетов
- * @param $form
- * @param $form_state
- */
-function reports_drivers_daily_form($form, &$form_state) {
-  $form['submit'] = array(
-    '#type'  => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
-
-  if (isset($_GET['action'])) {
-    $form['table'] = array(
-      '#markup' => reports_drivers_daily_output(),
-    );
-  }
-
-  return $form;
-}
-
-/**
- * @param $form
- * @param $form_state
- */
-function reports_drivers_daily_form_submit($form, &$form_state) {
-  $form_state['redirect'] = array(
-    'reports/drivers/daily',
-    array(
-      'query' => array(
-        'action' => 'submit',
-      ),
-    ),
-  );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Формирование данных для дальнейшей выгрузки
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function reports_drivers_stat_output($doc_id, $start_date, $end_date) {
+/**
+ * Функция подготавливает массив $data для дальнейшей оьработки и просмотра/выгрузки.
+ * @param $doc_id
+ * @param $start_date
+ * @param $end_date
+ *
+ * @return bool|mixed
+ */
+function reports_drivers_stat_data($doc_id, $start_date, $end_date) {
+
   $data = reports_drivers_current_doc($doc_id, $start_date, $end_date);
 
   if ($data) {
     foreach ($data as $key => $item) {
-      $doc_name = $item->doc_name;
       $quiz_result = reports_drivers_quiz_result($item->doc_id, $item->uid);
       $data[$key]->quiz_passed = $quiz_result->is_passed;
       $data[$key]->quiz_count = $quiz_result->count;
       $data[$key]->overdue = reports_drivers_overdue($item->doc_created, $item->quiz_passed);
     }
     return $data;
-    //return reports_drivers_stat_table($data, $doc_name, $start_date, $end_date);
   }
   else {
-    return false;
+    return FALSE;
   }
 }
 
@@ -391,7 +116,7 @@ function reports_drivers_stat_output($doc_id, $start_date, $end_date) {
  *
  * @return string
  */
-function reports_drivers_personal_output($user, $start_date, $end_date) {
+function reports_drivers_personal_data($user, $start_date, $end_date) {
 
   $data = reports_drivers_docs($user, $start_date, $end_date);
 
@@ -403,10 +128,10 @@ function reports_drivers_personal_output($user, $start_date, $end_date) {
       $data[$key]->overdue = reports_drivers_overdue($item->doc_created, $item->quiz_passed);
     }
 
-    return reports_drivers_personal_table($data);
+    return $data;
   }
   else {
-    return '<div id="no-results">Нет результатов для сотрудника ' . $user . '</div>';
+    return FALSE;
   }
 }
 
@@ -414,172 +139,183 @@ function reports_drivers_personal_output($user, $start_date, $end_date) {
  * Подготовка данных для оперативных отчетов за сутки
  * @return string
  */
-function reports_drivers_daily_output() {
-  $data = reports_drivers_daily();
+function reports_drivers_daily_data($date) {
+  $data = reports_drivers_daily($date);
 
   if ($data) {
     foreach ($data as $key => $item) {
       $quiz_result = reports_drivers_quiz_result($item->doc_id, $item->uid);
       $data[$key]->quiz_passed = $quiz_result->is_passed;
     }
-
-    return reports_drivers_daily_table($data);
-
+    return $data;
   }
   else {
-    return '<div id="no-results">Нет результатов</div>';
+    return FALSE;
   }
-
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Вывод данных
+// Превью данных
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function reports_drivers_stat_table($data, $doc_name, $start_date, $end_date) {
-  //dpm($data);
-  //Дальше создаем таблицу и выводим полученные данные
-  // Создаем   заголовок таблицы
-  $caption = t('Отчет по изучению документа "' . $doc_name .'" за период ' . date('d.m.Y', $start_date) . ' по ' . date('d.m.Y', $end_date));
-  // Создаем заголовки столбцов
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('ФИО машиниста'),
-    ),
-    array(
-      'data' => t('Дата подписки'),
-    ),
-    array(
-      'data' => t('Дата сдачи теста'),
-    ),
-    array(
-      'data' => t('Количество попыток'),
-    ),
-    array(
-      'data' => t('Количество дней просрочки'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->user_name,
-      ),
-      array(
-        'data' => date('d.m.Y', $item->signup_time),
-      ),
-      array(
-        'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
-      ),
-      array(
-        'data' => $item->quiz_count,
-      ),
-      array(
-        'data' => round($item->overdue / 86400),
-      ),
+function reports_drivers_stat_preview($caption, $headers, $doc_id, $start_date, $end_date) {
+  foreach ($headers as $key => $header) {
+    $headers[$key] = array(
+      'data' => $header,
     );
   }
 
-  $excel = reports_drivers_export_xls($caption, $header, $rows);
-  $output = '<a class="download-excel" href=' . $excel . '>Выгрузить в Excel</a>';
+  $data = reports_drivers_stat_data($doc_id, $start_date, $end_date);
 
-  $output .= theme(
-    'table', array(
-                  // Шапка таблицы
-                  'header'     => $header,
-                  // Тело таблицы
-                  'rows'       => $rows,
-                  // Заголовок таблицы
-                  'caption'    => $caption,
-                  // Атрибуты таблицы
-                  'attributes' => array('width' => '100%', 'class' => array('reports')),
-             )
-  );
+  if ($data) {
+    foreach ($data as $key => $row) {
+      $rows[] = array(
+        array(
+          'data' => $key + 1,
+        ),
+        array(
+          'data' => $row->user_name,
+        ),
+        array(
+          'data' => date('d.m.Y', $row->signup_time),
+        ),
+        array(
+          'data' => ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        ),
+        array(
+          'data' => $row->quiz_count,
+        ),
+        array(
+          'data' => round($row->overdue / 86400),
+        ),
+      );
+    }
 
-  return $output;
+    $output = theme(
+      'table', array(
+                    // Шапка таблицы
+                    'header'     => $headers,
+                    // Тело таблицы
+                    'rows'       => $rows,
+                    // Заголовок таблицы
+                    'caption'    => $caption,
+                    // Атрибуты таблицы
+                    'attributes' => array('width' => '100%', 'class' => array('reports')),
+               )
+    );
+
+    return $output;
+  }
+  else {
+    return '<div id="no-results">Нет результатов.</div>';;
+  }
+
+
 }
 
-/**
- * Оформление в виде таблицы и выгрузка в excel
- *
- * @param $data
- *
- * @return string
- */
-function reports_drivers_personal_table($data) {
-  //Дальше создаем таблицу и выводим полученные данные
-  // Создаем   заголовок таблицы
-  $caption = t('Персональный отчет машиниста по изучению документов на ' . date('d.m.Y', time()));
-  // Создаем заголовки столбцов
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('Название документа'),
-    ),
-    array(
-      'data' => t('Дата подписки'),
-    ),
-    array(
-      'data' => t('Дата сдачи теста'),
-    ),
-    array(
-      'data' => t('Количество попыток'),
-    ),
-    array(
-      'data' => t('Количество дней просрочки'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->doc_name,
-      ),
-      array(
-        'data' => date('d.m.Y', $item->signup_time),
-      ),
-      array(
-        'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
-      ),
-      array(
-        'data' => $item->quiz_count,
-      ),
-      array(
-        'data' => round($item->overdue / 86400),
-      ),
+function reports_drivers_personal_preview($caption, $headers, $user, $start_date, $end_date) {
+  foreach ($headers as $key => $header) {
+    $headers[$key] = array(
+      'data' => $header,
     );
   }
 
-  $excel = reports_drivers_export_xlsx($header, $rows, 'blank_2.xlsx');
-  $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
+  $data = reports_drivers_personal_data($user, $start_date, $end_date);
 
-  $output .= theme(
-    'table', array(
-                  // Шапка таблицы
-                  'header'     => $header,
-                  // Тело таблицы
-                  'rows'       => $rows,
-                  // Заголовок таблицы
-                  'caption'    => $caption,
-                  // Атрибуты таблицы
-                  'attributes' => array('width' => '100%', 'class' => array('reports')),
-             )
-  );
+  if ($data) {
+    foreach ($data as $key => $item) {
+      $rows[] = array(
+        array(
+          'data' => $key + 1,
+        ),
+        array(
+          'data' => $item->doc_name,
+        ),
+        array(
+          'data' => date('d.m.Y', $item->signup_time),
+        ),
+        array(
+          'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
+        ),
+        array(
+          'data' => $item->quiz_count,
+        ),
+        array(
+          'data' => round($item->overdue / 86400),
+        ),
+      );
+    }
 
-  return $output;
+    $output = theme(
+      'table', array(
+                    // Шапка таблицы
+                    'header'     => $headers,
+                    // Тело таблицы
+                    'rows'       => $rows,
+                    // Заголовок таблицы
+                    'caption'    => $caption,
+                    // Атрибуты таблицы
+                    'attributes' => array('width' => '100%', 'class' => array('reports')),
+               )
+    );
+
+    return $output;
+  }
+  else {
+    return '<div id="no-results">Нет результатов.</div>';;
+  }
 }
+
+function reports_drivers_daily_preview($caption, $headers, $date) {
+  foreach ($headers as $key => $header) {
+    $headers[$key] = array(
+      'data' => $header,
+    );
+  }
+
+  $data = reports_drivers_daily_data($date);
+
+  if ($data) {
+    foreach ($data as $key => $row) {
+      $rows[] = array(
+        array(
+          'data' => $key + 1,
+        ),
+        array(
+          'data' => $row->user_name,
+        ),
+        array(
+          'data' => $row->doc_name,
+        ),
+        array(
+          'data' => date('d.m.Y', $row->signup_time),
+        ),
+        array(
+          'data' => ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        ),
+      );
+    }
+
+    $output = theme(
+      'table', array(
+                    // Шапка таблицы
+                    'header'     => $headers,
+                    // Тело таблицы
+                    'rows'       => $rows,
+                    // Заголовок таблицы
+                    'caption'    => $caption,
+                    // Атрибуты таблицы
+                    'attributes' => array('width' => '100%', 'class' => array('reports')),
+               )
+    );
+
+    return $output;
+  }
+  else {
+    return '<div id="no-results">Нет результатов.</div>';;
+  }
+}
+
 
 /**
  * @param $data
@@ -589,7 +325,7 @@ function reports_drivers_personal_table($data) {
 function reports_drivers_daily_table($data) {
   //Дальше создаем таблицу и выводим полученные данные
   // Создаем   заголовок таблицы
-  $caption = t('Оперативный отчет по инструктажу за сутки <br > Дата отчета:' . date('d.m.Y', time()));
+
   // Создаем заголовки столбцов
   $header = array(
     array(
@@ -751,21 +487,20 @@ function reports_drivers_docs($user, $start_date, $end_date) {
 }
 
 
-
 /**
- * Получаем данные за текущий день.
+ * Получаем данные за указанную дату.
  * @return mixed
  */
-function reports_drivers_daily() {
+function reports_drivers_daily($date) {
+  $interval = array($date, $date + 86400);
+  //$end_date = $date + 86400;
   $flag_signup = flag_get_flag('signup');
-  $today = date('d.m.Y');
-  $timestamp = strtotime($today);
 
   $query = db_select('flag_content', 'f');
   $query->join('node', 'n', 'n.nid = f.content_id');
   $query->join('field_data_field_user_full_name', 'ufn', 'ufn.entity_id = f.uid');
   $query->condition('f.fid', $flag_signup->fid);
-  $query->condition('f.timestamp', $timestamp, '>');
+  $query->condition('f.timestamp', $interval, 'BETWEEN');
   $query->condition('n.type', 'doc_for_drivers');
   $query->addField('ufn', 'field_user_full_name_value', 'user_name');
   $query->addField('f', 'uid', 'uid');
@@ -804,12 +539,13 @@ function reports_drivers_quiz_result($id, $uid) {
     $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $quiz_vid);
     if ($is_passed_quiz == TRUE) {
       $data->is_passed = $quiz_results->time_end;
-    } else {
-      $data->is_passed = false;
+    }
+    else {
+      $data->is_passed = FALSE;
     }
   }
   else {
-    $data->is_passed = false;
+    $data->is_passed = FALSE;
   }
   return $data;
 }
@@ -863,85 +599,79 @@ function reports_drivers_autocomplete($string) {
   drupal_json_output($matches);
 }
 
-// Экспорт в excel
-function reports_drivers_export_xlsx($headers2, $data2, $blank_file_name) {
-
-  global $user;
-
-  $module_path = drupal_get_path('module', 'reports_drivers');
-  $blank = "$module_path/$blank_file_name";
-
-  foreach ($headers2 as $header) {
-    $headers['stat'][] = $header['data'];
-  }
-  $headers['sds'][] = 'sadfsadfsdf';
-  dpm($headers);
-
-  foreach ($data2 as $key => $data3) {
-    foreach ($data3 as $data4) {
-      //dpm($data4);
-      $data['stat'][$key][] = $data4['data'];
-    }
-  }
-
-  module_load_include('inc', 'phpexcel');
-
-  // Store the file in sites/default/files
-  $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
-  $subdir = 'reports';
-  $filename = $user->uid . '_' . time() . '.xlsx';
-  $path = "$dir/$subdir/$filename";
-
-  if (!is_dir('path_directory')) {
-    @mkdir('path_directory');
-  }
-
-
-
-  // Use the .xls format
-  $options = array(
-    'template' => $blank,
-    'format'   => 'xlsx',
-  );
-
-  $result = phpexcel_export($headers, $data, $path, $options);
-
-  if ($result == PHPEXCEL_SUCCESS) {
-    return '/sites/default/files/' . $filename;
-  }
-  else {
-    drupal_set_message(t("Oops ! An error occured !"), 'error');
-  }
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Экспорт в Excel
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Функция делает выгрузку в Excel
+ *
  * @param $form
  * @param $form_state
  */
 function reports_drivers_stat_export($form, $form_state) {
-  //dpm($form_state);
+  $caption = $form_state['values']['fields']['caption'];
+  $headers = $form_state['values']['headers'];
   $doc_id = $form_state['values']['fields']['doc'];
   $start_date = strtotime($form_state['values']['fields']['start_date']);
   $end_date = strtotime($form_state['values']['fields']['end_date']);
 
-  $data = reports_drivers_stat_output($doc_id, $start_date, $end_date);
-  foreach ($data as $key => $item) {
-    $rows[$key] = array(
-      $key + 1,
-      $item->user_name,
-      date('d.m.Y', $item->signup_time),
-      ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
-      $item->quiz_count,
-      round($item->overdue / 86400),
-    );
+  $data = reports_drivers_stat_data($doc_id, $start_date, $end_date);
+
+  if ($data) {
+    foreach ($data as $key => $row) {
+      $rows[$key] = array(
+        $key + 1,
+        $row->user_name,
+        date('d.m.Y', $row->signup_time),
+        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        $row->quiz_count,
+        round($row->overdue / 86400),
+      );
+    }
+
+    $message = reports_drivers_export_xls($caption, $headers, $rows);
+
+    drupal_set_message($message, 'status');
   }
-  dpm($rows);
+  else {
+    drupal_set_message('Нет результатов для выгрузки', 'error');
+  }
+}
+
+function reports_drivers_personal_export($form, $form_state) {
+  $caption = $form_state['values']['caption'];
+  $headers = $form_state['values']['headers'];
+  $user = $form_state['values']['fullname'];
+  $start_date = strtotime($form_state['values']['start_date']);
+  $end_date = strtotime($form_state['values']['end_date']);
+
+  $data = reports_drivers_personal_data($user, $start_date, $end_date);
+
+  if ($data) {
+    foreach ($data as $key => $row) {
+      $rows[$key] = array(
+        $key + 1,
+        $row->doc_name,
+        date('d.m.Y', $row->signup_time),
+        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
+        $row->quiz_count,
+        round($row->overdue / 86400),
+      );
+    }
+
+    $message = reports_drivers_export_xls($caption, $headers, $rows);
+
+    drupal_set_message($message, 'status');
+  }
+  else {
+    drupal_set_message('Нет результатов для выгрузки', 'error');
+  }
 }
 
 /**
  * Экспорт в Excel
+ *
  * @param $caption
  *  Заголовок таблицы
  * @param $headers
@@ -955,39 +685,25 @@ function reports_drivers_export_xls($caption, $headers, $data) {
   $module_path = drupal_get_path('module', 'reports_drivers');
 
   require 'Classes/PHPExcel.php';
-  // Форматируем заголовки для экспорта
-  foreach ($headers as $header) {
-    $formated_headers[] = $header['data'];
-  }
-
-  // Форматируем данные для экспорта
-  foreach ($data as $key => $row) {
-    foreach($row as $item) {
-      $formated_data[$key][] = $item['data'];
-    }
-  }
 
   // Стили
   $styleCaption = array(
-    'font'  => array(
-      'bold'  => true,
+    'font' => array(
+      'bold'  => TRUE,
       'color' => array('rgb' => '3366CC'),
-    ));
+    )
+  );
 
   $inputFileName = $module_path . '/blank_1.xlsx';
 
   /** Load $inputFileName to a PHPExcel Object **/
   $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
-  // Set properties
-  $objPHPExcel->getProperties()->setCreator("ThinkPHP")
-    ->setLastModifiedBy("Daniel Schlichtholz")
-    ->setTitle("Office 2007 XLSX Test Document")
-    ->setSubject("Office 2007 XLSX Test Document")
-    ->setDescription("Test doc for Office 2007 XLSX, generated by PHPExcel.")
-    ->setKeywords("office 2007 openxml php")
-    ->setCategory("Test result file");
-  $objPHPExcel->getActiveSheet()->setTitle('Minimalistic demo');
+  // Заголовки для выгрузки
+  //header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  //header('Content-Disposition: attachment;filename="your_name.xls"');
+  //header('Cache-Control: max-age=0');
 
+  $objPHPExcel->getActiveSheet()->setTitle('Отчет');
 
 
   $objPHPExcel->setActiveSheetIndex(0)
@@ -995,16 +711,21 @@ function reports_drivers_export_xls($caption, $headers, $data) {
     ->getStyle('A1')->applyFromArray($styleCaption);
 
   $objPHPExcel->getActiveSheet()
-    ->fromArray($formated_headers, 'data', 'A2')
+    ->fromArray($headers, 'data', 'A2')
     ->getStyle('A1')->applyFromArray($styleCaption);
 
-
+  // Записываем данные
   $objPHPExcel->getActiveSheet()
-    ->fromArray($formated_data, null, 'A3');
+    ->fromArray($data, NULL, 'A3');
 
 
   $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
-  $dir = file_stream_wrapper_get_instance_by_uri('public://')->realpath();
-  $objWriter->save($dir . '/MyExcel.xlsx');
+  // Без этой функции не происходит автоматическая загрузка.
+  //ob_end_clean();
+  //$objWriter->save('php://output');
+  $dir = variable_get('file_public_path', conf_path() . '/files/reports/');
+  $filename = time() . '.xlsx';
+  $objWriter->save($dir . $filename);
 
+  return "Вы можете скачать файл выгрузки <a href=/" . $dir . $filename . ">здесь</a>";
 }
