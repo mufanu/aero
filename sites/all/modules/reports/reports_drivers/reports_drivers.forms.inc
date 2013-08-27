@@ -6,8 +6,8 @@
  * @param $form_state
  */
 function reports_drivers_stat_form($form, &$form_state) {
-// При первой отправке формы $_GET['direction'] будет пуст и поэтому берем данные с
-// $form_state['values']['fields']['direction']
+  // При первой ajax отправке формы $_GET['direction'] будет пуст и поэтому берем данные с
+  //$form_state['values']['fields']['direction']
   if (isset($_GET['direction'])) {
     $direction_id = $_GET['direction'];
   }
@@ -16,43 +16,42 @@ function reports_drivers_stat_form($form, &$form_state) {
       : NULL;
   }
 
-// При первой отправке формы $_GET['doc'] будет пуст и поэтому берем данные с
-// $form_state['values']['fields']['doc']
+  // При первой ajax отправке формы $_GET['doc'] будет пуст и поэтому берем данные с
+  // $form_state['values']['fields']['doc']
   if (isset($_GET['doc'])) {
     $doc_id = $_GET['doc'];
   }
   else {
     $doc_id = isset($form_state['values']['fields']['doc']) ? $form_state['values']['fields']['doc'] : NULL;
   }
-
+  // Дата начала отчета
   if (isset($_GET['start_date'])) {
     $start_date = $_GET['start_date'];
   }
-
+  // Дата окончания отчета
   if (isset($_GET['end_date'])) {
     $end_date = $_GET['end_date'];
   }
 
-  $options = array('' => '- Выберите -');
-  $options += reports_drivers_directions();
-
-// Враппер для селектов
+  // Враппер для селектов
   $form['fields'] = array(
-    '#tree'   => TRUE,
+    '#tree' => TRUE,
     '#prefix' => '<div id="fields">',
     '#suffix' => '</div>',
   );
 
+  $directions = array('' => '- Выберите -');
+  $directions += reports_drivers_directions();
   $form['fields']['direction'] = array(
-    '#type'          => 'select',
-    '#title'         => t('Выберите направление'),
-    '#options'       => $options,
+    '#type' => 'select',
+    '#title' => t('Выберите направление'),
+    '#options' => $directions,
     '#default_value' => $direction_id,
-    '#required'      => TRUE,
-    '#ajax'          => array(
+    '#required' => TRUE,
+    '#ajax' => array(
       'callback' => 'reports_drivers_ajax_callback',
-      'wrapper'  => 'fields',
-      'method'   => 'replace',
+      'wrapper' => 'fields',
+      'method' => 'replace',
     ),
   );
 
@@ -60,22 +59,20 @@ function reports_drivers_stat_form($form, &$form_state) {
     $docs = array('' => '- Выберите -');
     $docs += reports_drivers_direction_docs($direction_id);
     $form['fields']['doc'] = array(
-      '#type'          => 'select',
-      '#title'         => t('Выберите документ'),
-      '#options'       => $docs,
+      '#type' => 'select',
+      '#title' => t('Выберите документ'),
+      '#options' => $docs,
       '#default_value' => $doc_id,
-      '#required'      => TRUE,
-      '#ajax'          => array(
+      '#required' => TRUE,
+      '#ajax' => array(
         'callback' => 'reports_drivers_ajax_callback',
-        'wrapper'  => 'fields',
-        'method'   => 'replace',
+        'wrapper' => 'fields',
+        'method' => 'replace',
       ),
     );
   }
 
   if (is_numeric($direction_id) && is_numeric($doc_id)) {
-    $format = 'Y-m-d';
-
     $query = db_select('node', 'n')
       ->condition('nid', $doc_id)
       ->fields('n')
@@ -86,41 +83,38 @@ function reports_drivers_stat_form($form, &$form_state) {
     $doc_name = $query->title;
 
     $form['fields']['start_date'] = array(
-      '#type'                => 'date_popup',
-      '#title'               => t('Start date'),
-      '#default_value'       => date($format, $doc_created),
-      '#date_format'         => $format,
+      '#type' => 'date_popup',
+      '#title' => t('Start date'),
+      '#default_value' => date(REPORTS_DATE_FORMAT, $doc_created),
+      '#date_format' => REPORTS_DATE_FORMAT,
       '#date_label_position' => 'within',
-      '#date_increment'      => 15,
-      '#date_year_range'     => '-3:+3',
-      '#datepicker_options'  => array(),
-      '#required'            => TRUE,
+      '#date_increment' => 15,
+      '#date_year_range' => '-3:+3',
+      '#datepicker_options' => array(),
+      '#required' => TRUE,
     );
 
     $form['fields']['end_date'] = array(
-      '#type'                => 'date_popup',
-      '#title'               => t('End date'),
-      '#default_value'       => date($format, time()),
-      '#date_format'         => $format,
+      '#type' => 'date_popup',
+      '#title' => t('End date'),
+      '#default_value' => date(REPORTS_DATE_FORMAT, time()),
+      '#date_format' => REPORTS_DATE_FORMAT,
       '#date_label_position' => 'within',
-      '#date_increment'      => 15,
-      '#date_year_range'     => '-3:+3',
-      '#datepicker_options'  => array(),
-      '#required'            => TRUE,
+      '#date_increment' => 15,
+      '#date_year_range' => '-3:+3',
+      '#datepicker_options' => array(),
+      '#required' => TRUE,
     );
-// Заголовок таблицы
-    $caption = t(
-      'Отчет по изучению документа "' . $doc_name . '" за период ' . date('d.m.Y', $start_date) . ' по ' . date(
-        'd.m.Y', $end_date
-      )
-    );
+    // Заголовок таблицы
+    $caption = 'Отчет по изучению документа "' . $doc_name . '" за период ' . date(REPORTS_DATE_FORMAT, $start_date) . ' по ' . date(
+        REPORTS_DATE_FORMAT, $end_date);
     $form['fields']['caption'] = array(
-      '#type'  => 'value',
+      '#type' => 'value',
       '#value' => $caption,
     );
   }
 
-// Заголовок столбцов
+  // Заголовок столбцов
   $headers = array(
     '№',
     'ФИО машиниста',
@@ -130,18 +124,18 @@ function reports_drivers_stat_form($form, &$form_state) {
     'Количество дней просрочки',
   );
   $form['headers'] = array(
-    '#type'  => 'value',
+    '#type' => 'value',
     '#value' => $headers,
   );
 
   $form['submit'] = array(
-    '#type'  => 'submit',
+    '#type' => 'submit',
     '#value' => t('Сформировать отчет'),
   );
   if (is_numeric($direction_id) && is_numeric($doc_id)) {
     $form['export'] = array(
-      '#type'   => 'submit',
-      '#value'  => t('Выгрузить в Excel'),
+      '#type' => 'submit',
+      '#value' => t('Выгрузить в Excel'),
       '#submit' => array('reports_drivers_stat_export'),
     );
   }
@@ -155,18 +149,21 @@ function reports_drivers_stat_form($form, &$form_state) {
   return $form;
 }
 
+/**
+ * @param $form
+ * @param $form_state
+ */
 function reports_drivers_stat_form_submit($form, &$form_state) {
   $start_date = strtotime($form_state['values']['fields']['start_date']);
   $end_date = strtotime($form_state['values']['fields']['end_date']);
-//dpm($form_state);
   $form_state['redirect'] = array(
     'reports/drivers/stat',
     array(
       'query' => array(
-        'direction'  => $form_state['values']['fields']['direction'],
-        'doc'        => $form_state['values']['fields']['doc'],
+        'direction' => $form_state['values']['fields']['direction'],
+        'doc' => $form_state['values']['fields']['doc'],
         'start_date' => $start_date,
-        'end_date'   => $end_date,
+        'end_date' => $end_date,
       ),
     ),
   );
@@ -176,7 +173,6 @@ function reports_drivers_stat_form_submit($form, &$form_state) {
  * AJAX callback
  */
 function reports_drivers_ajax_callback($form, $form_state) {
-//dpm($form_state);
   return $form['fields'];
 }
 
@@ -186,7 +182,6 @@ function reports_drivers_ajax_callback($form, $form_state) {
  * @param $form_state
  */
 function reports_drivers_personal_form($form, &$form_state) {
-  $format = 'Y-m-d';
 
   if (isset($_GET['start_date'])) {
     $start_date = $_GET['start_date'];
@@ -208,66 +203,68 @@ function reports_drivers_personal_form($form, &$form_state) {
   else {
     $user = '';
   }
-
-  $caption = t('Персональный отчет машиниста по изучению документов на ' . date('d.m.Y', time()));
+  // Заголовок таблицы
+  $caption = t('Персональный отчет машиниста по изучению документов на ' . date(REPORTS_DATE_FORMAT, time()));
+  // Заголовки столбцов
   $headers = array(
     '№',
-    'ФИО',
     'Название документа',
     'Дата подписки',
-    'Дата сдачи',
+    'Дата сдачи теста',
+    'Количество попыток',
+    'Количество дней просрочки',
   );
 
   $form['caption'] = array(
-    '#type'  => 'value',
+    '#type' => 'value',
     '#value' => $caption,
   );
 
   $form['headers'] = array(
-    '#type'  => 'value',
+    '#type' => 'value',
     '#value' => $headers,
   );
 
   $form['standard']['first-col']['fullname'] = array(
-    '#type'              => 'textfield',
-    '#title'             => t('Укажите ФИО'),
-    '#size'              => 100,
-    '#default_value'     => $user,
+    '#type' => 'textfield',
+    '#title' => t('Укажите ФИО'),
+    '#size' => 100,
+    '#default_value' => $user,
     '#autocomplete_path' => 'reports/drivers/autocomplete',
-    '#required'          => TRUE,
+    '#required' => TRUE,
   );
 
   $form['start_date'] = array(
-    '#type'                => 'date_popup',
-    '#title'               => t('Start date'),
-    '#default_value'       => date($format, $start_date),
-    '#date_format'         => $format,
+    '#type' => 'date_popup',
+    '#title' => t('Start date'),
+    '#default_value' => date(REPORTS_DATE_FORMAT, $start_date),
+    '#date_format' => REPORTS_DATE_FORMAT,
     '#date_label_position' => 'within',
-    '#date_increment'      => 15,
-    '#date_year_range'     => '-3:+3',
-    '#datepicker_options'  => array(),
+    '#date_increment' => 15,
+    '#date_year_range' => '-3:+3',
+    '#datepicker_options' => array(),
   );
 
   $form['end_date'] = array(
-    '#type'                => 'date_popup',
-    '#title'               => t('End date'),
-    '#default_value'       => date($format, $end_date),
-    '#date_format'         => $format,
+    '#type' => 'date_popup',
+    '#title' => t('End date'),
+    '#default_value' => date(REPORTS_DATE_FORMAT, $end_date),
+    '#date_format' => REPORTS_DATE_FORMAT,
     '#date_label_position' => 'within',
-    '#date_increment'      => 15,
-    '#date_year_range'     => '-3:+3',
-    '#datepicker_options'  => array(),
+    '#date_increment' => 15,
+    '#date_year_range' => '-3:+3',
+    '#datepicker_options' => array(),
   );
 
   $form['submit'] = array(
-    '#type'  => 'submit',
+    '#type' => 'submit',
     '#value' => t('Сформировать отчет'),
   );
 
 
   $form['export'] = array(
-    '#type'   => 'submit',
-    '#value'  => t('Выгрузить в Excel'),
+    '#type' => 'submit',
+    '#value' => t('Выгрузить в Excel'),
     '#submit' => array('reports_drivers_personal_export'),
   );
 
@@ -311,7 +308,6 @@ function reports_drivers_personal_form_validate($form, &$form_state) {
  * @param $form_state
  */
 function reports_drivers_personal_form_submit($form, &$form_state) {
-  //dpm($form_state);
   $start_date = strtotime($form_state['values']['start_date']);
   $end_date = strtotime($form_state['values']['end_date']);
 
@@ -319,9 +315,9 @@ function reports_drivers_personal_form_submit($form, &$form_state) {
     'reports/drivers/personal',
     array(
       'query' => array(
-        'user'       => $form_state['values']['fullname'],
+        'user' => $form_state['values']['fullname'],
         'start_date' => $start_date,
-        'end_date'   => $end_date,
+        'end_date' => $end_date,
       ),
     ),
   );
@@ -333,7 +329,6 @@ function reports_drivers_personal_form_submit($form, &$form_state) {
  * @param $form_state
  */
 function reports_drivers_daily_form($form, &$form_state) {
-  $format = 'Y-m-d';
 
   if (isset($_GET['date'])) {
     $date = $_GET['date'];
@@ -343,36 +338,35 @@ function reports_drivers_daily_form($form, &$form_state) {
   }
 
   $caption = t('Оперативный отчет по инструктажу за сутки <br > Дата отчета:' . $date);
+  $form['caption'] = array(
+    '#type' => 'value',
+    '#value' => $caption,
+  );
   $headers = array(
     '№',
+    'ФИО',
     'Название документа',
     'Дата подписки',
     'Дата сдачи теста',
-    'Количество попыток',
-    'Количество дней просрочки',
-  );
-  $form['caption'] = array(
-    '#type'  => 'value',
-    '#value' => $caption,
   );
   $form['headers'] = array(
-    '#type'  => 'value',
+    '#type' => 'value',
     '#value' => $headers,
   );
 
 
   $form['date'] = array(
-    '#type'                => 'date_popup',
-    '#title'               => t('Дate'),
-    '#default_value'       => date($format, $date),
-    '#date_format'         => $format,
+    '#type' => 'date_popup',
+    '#title' => t('Date'),
+    '#default_value' => date(REPORTS_DATE_FORMAT, $date),
+    '#date_format' => REPORTS_DATE_FORMAT,
     '#date_label_position' => 'within',
-    '#date_increment'      => 15,
-    '#date_year_range'     => '-3:+3',
-    '#datepicker_options'  => array(),
+    '#date_increment' => 15,
+    '#date_year_range' => '-3:+3',
+    '#datepicker_options' => array(),
   );
   $form['submit'] = array(
-    '#type'  => 'submit',
+    '#type' => 'submit',
     '#value' => t('Сформировать отчет'),
   );
 
