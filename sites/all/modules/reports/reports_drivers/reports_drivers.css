@@ -1,30 +1,25 @@
-#reports-signup-form .date-padding {
-  float: none;
+
+#reports-drivers-stat-form  label,
+#reports-drivers-personal-form label,
+#reports-drivers-daily-form label {
+  display: inline-block;
+  width: 200px;
 }
 
-#no-results {
-  margin:  20px 0;
-  text-align: center;
-  font-weight: bold;
+#reports-drivers-stat-form .container-inline-date .date-padding,
+#reports-drivers-personal-form .container-inline-date .date-padding,
+#reports-drivers-daily-form .container-inline-date .date-padding {
+  float: right;
+  padding: 0;
 }
 
-.reports caption {
-  font-weight: bold;
-  color: #3366CC;
-  margin: 10px;
+#reports-drivers-stat-form .container-inline-date .date-padding .description,
+#reports-drivers-personal-form .container-inline-date .date-padding .description,
+#reports-drivers-daily-form .container-inline-date .date-padding .description {
+  display: none;
 }
 
-.reports th {
+#reports-drivers-personal-form .form-item-fullname input {
   border: 1px solid #999;
-  color: #3366CC;
-  text-align: center;
-  padding: 5px;
-}
-
-.reports td {
-  text-align: center;
-}
-
-.download-excel {
-  margin-left: 10px;
+  margin-left: -4px;
 }

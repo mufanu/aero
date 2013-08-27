@@ -3,9 +3,9 @@ description = 3 типа отчета по инструктажу машинис
 package = "Reports"
 core = 7.x
 
-stylesheets[all][] = reports2.css
+stylesheets[all][] = reports_drivers.css
 
 dependencies[] = date
 dependencies[] = date_popup
 
-version = "7.x-1.0"
+version = "7.x-2.0"

@@ -82,6 +82,10 @@ function reports_drivers_stat_form($form, &$form_state) {
     $doc_created = $query->created;
     $doc_name = $query->title;
 
+    $form['fields']['info'] = array(
+      '#markup' => '<div><h4>Выберите период подписок и сдачи теста:</h4></div>',
+    );
+
     $form['fields']['start_date'] = array(
       '#type' => 'date_popup',
       '#title' => t('Start date'),
@@ -128,12 +132,14 @@ function reports_drivers_stat_form($form, &$form_state) {
     '#value' => $headers,
   );
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Сформировать отчет'),
-  );
   if (is_numeric($direction_id) && is_numeric($doc_id)) {
-    $form['export'] = array(
+    $form['fields']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Сформировать отчет'),
+    );
+  }
+  if (isset($_GET['act']) && $_GET['act'] == 'formed') {
+    $form['fields']['export'] = array(
       '#type' => 'submit',
       '#value' => t('Выгрузить в Excel'),
       '#submit' => array('reports_drivers_stat_export'),
@@ -157,9 +163,10 @@ function reports_drivers_stat_form_submit($form, &$form_state) {
   $start_date = strtotime($form_state['values']['fields']['start_date']);
   $end_date = strtotime($form_state['values']['fields']['end_date']);
   $form_state['redirect'] = array(
-    'reports/drivers/stat',
+    'training-center/reports/drivers/stat',
     array(
       'query' => array(
+        'act' => 'formed',
         'direction' => $form_state['values']['fields']['direction'],
         'doc' => $form_state['values']['fields']['doc'],
         'start_date' => $start_date,
@@ -228,9 +235,9 @@ function reports_drivers_personal_form($form, &$form_state) {
   $form['standard']['first-col']['fullname'] = array(
     '#type' => 'textfield',
     '#title' => t('Укажите ФИО'),
-    '#size' => 100,
+    '#size' => 75,
     '#default_value' => $user,
-    '#autocomplete_path' => 'reports/drivers/autocomplete',
+    '#autocomplete_path' => 'training-center/reports/drivers/autocomplete',
     '#required' => TRUE,
   );
 
@@ -261,13 +268,13 @@ function reports_drivers_personal_form($form, &$form_state) {
     '#value' => t('Сформировать отчет'),
   );
 
-
-  $form['export'] = array(
-    '#type' => 'submit',
-    '#value' => t('Выгрузить в Excel'),
-    '#submit' => array('reports_drivers_personal_export'),
-  );
-
+  if (isset($_GET['act']) && $_GET['act'] == 'formed') {
+    $form['export'] = array(
+      '#type' => 'submit',
+      '#value' => t('Выгрузить в Excel'),
+      '#submit' => array('reports_drivers_personal_export'),
+    );
+  }
 
   if (isset($_GET['start_date'])) {
     $form['table'] = array(
@@ -312,9 +319,10 @@ function reports_drivers_personal_form_submit($form, &$form_state) {
   $end_date = strtotime($form_state['values']['end_date']);
 
   $form_state['redirect'] = array(
-    'reports/drivers/personal',
+    'training-center/reports/drivers/personal',
     array(
       'query' => array(
+        'act' => 'formed',
         'user' => $form_state['values']['fullname'],
         'start_date' => $start_date,
         'end_date' => $end_date,
@@ -369,12 +377,16 @@ function reports_drivers_daily_form($form, &$form_state) {
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Сформировать отчет'),
+    '#name' => 'form',
   );
-  $form['export'] = array(
-    '#type' => 'submit',
-    '#value' => t('Выгрузить в Excel'),
-    '#submit' => array('reports_drivers_daily_export'),
-  );
+
+  if (isset($_GET['act']) && $_GET['act'] == 'formed') {
+    $form['export'] = array(
+      '#type' => 'submit',
+      '#value' => t('Выгрузить в Excel'),
+      '#submit' => array('reports_drivers_daily_export'),
+    );
+  }
 
   if (isset($_GET['date'])) {
     $form['table'] = array(
@@ -392,9 +404,10 @@ function reports_drivers_daily_form($form, &$form_state) {
 function reports_drivers_daily_form_submit($form, &$form_state) {
   $date = strtotime($form_state['values']['date']);
   $form_state['redirect'] = array(
-    'reports/drivers/daily',
+    'training-center/reports/drivers/daily',
     array(
       'query' => array(
+        'act' => 'formed',
         'date' => $date,
       ),
     ),

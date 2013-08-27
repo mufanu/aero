@@ -1,7 +1,7 @@
 <?php
 
 // Формат времени для popup.
-define('REPORTS_DATE_FORMAT', 'Y-m-d');
+define('REPORTS_DATE_FORMAT', 'd.m.Y');
 
 /**
  * @return mixed
@@ -15,7 +15,7 @@ function reports_drivers_menu() {
     'type'             => MENU_CALLBACK,
   );
   // Отчет по статистике изучения документа
-  $items['reports/drivers/stat'] = array(
+  $items['training-center/reports/drivers/stat'] = array(
     'title'            => 'Отчет по статистике изучения документа',
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('reports_drivers_stat_form'),
@@ -24,7 +24,7 @@ function reports_drivers_menu() {
     'file'             => 'reports_drivers.forms.inc',
   );
   // Персональный отчет машиниста по изучению документа
-  $items['reports/drivers/personal'] = array(
+  $items['training-center/reports/drivers/personal'] = array(
     'title'            => 'Персональный отчет машиниста по изучению документа',
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('reports_drivers_personal_form'),
@@ -32,9 +32,8 @@ function reports_drivers_menu() {
     'type'             => MENU_CALLBACK,
     'file'             => 'reports_drivers.forms.inc'
   );
-
   // Оперативный отчет по инструктажу за сутки
-  $items['reports/drivers/daily'] = array(
+  $items['training-center/reports/drivers/daily'] = array(
     'title'            => 'Оперативный отчет по инструктажу за сутки',
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('reports_drivers_daily_form'),
@@ -43,7 +42,7 @@ function reports_drivers_menu() {
     'file'             => 'reports_drivers.forms.inc',
   );
   // Вспомогательные страницы autocomplete
-  $items['reports/drivers/autocomplete'] = array(
+  $items['training-center/reports/drivers/autocomplete'] = array(
     'page callback'    => 'reports_drivers_autocomplete',
     'access arguments' => array('access reports for drivers'),
     'type'             => MENU_CALLBACK,
@@ -59,9 +58,9 @@ function reports_drivers_menu() {
 function reports_drivers_main_page() {
 
   $items['items'] = array(
-    l('Отчет по статистике изучения документа', 'reports/drivers/stat'),
-    l('Персональный отчет машиниста по изучению документа', 'reports/drivers/personal'),
-    l('Оперативный отчет по инструктажу за сутки', 'reports/drivers/daily'),
+    l('Отчет по статистике изучения документа', 'training-center/reports/drivers/stat'),
+    l('Персональный отчет машиниста по изучению документа', 'training-center/reports/drivers/personal'),
+    l('Оперативный отчет по инструктажу за сутки', 'training-center/reports/drivers/daily'),
   );
 
   return theme('item_list', $items);
@@ -429,11 +428,15 @@ function reports_drivers_user_docs($user, $start_date, $end_date) {
 
   $query = db_select('field_data_field_user_full_name', 'ufn');
   $query->join('flag_content', 'f', 'ufn.entity_id = f.uid');
+  $query->join('field_data_field_date', 'fd', 'fd.entity_id = f.content_id');
   $query->join('node', 'n', 'n.nid = f.content_id');
+  $query->join('node', 'n2', 'fd.field_date_target_id = n2.nid');
   $db_and = db_and();
   $db_and->condition('field_user_full_name_value', $user);
   $db_and->condition('f.fid', $flag_signup->fid);
   $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
+  $db_and->condition('n.status', 1);
+  $db_and->condition('n2.status', 1);
   $query->condition($db_and);
   $query->distinct();
   $query->addField('n', 'title', 'doc_name');
@@ -690,7 +693,7 @@ function reports_drivers_export_xls($caption, $headers, $data) {
     )
   );
 
-  $inputFileName = $module_path . '/blank_1.xlsx';
+  $inputFileName = $module_path . '/blank.xlsx';
 
   /** Load $inputFileName to a PHPExcel Object **/
   $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
