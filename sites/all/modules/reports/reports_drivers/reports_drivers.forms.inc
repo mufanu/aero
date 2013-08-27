@@ -364,6 +364,7 @@ function reports_drivers_daily_form($form, &$form_state) {
     '#date_increment' => 15,
     '#date_year_range' => '-3:+3',
     '#datepicker_options' => array(),
+    '#required' => TRUE,
   );
   $form['submit'] = array(
     '#type' => 'submit',
