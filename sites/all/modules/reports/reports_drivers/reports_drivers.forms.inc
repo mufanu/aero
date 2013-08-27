@@ -369,6 +369,11 @@ function reports_drivers_daily_form($form, &$form_state) {
     '#type' => 'submit',
     '#value' => t('Сформировать отчет'),
   );
+  $form['export'] = array(
+    '#type' => 'submit',
+    '#value' => t('Выгрузить в Excel'),
+    '#submit' => array('reports_drivers_daily_export'),
+  );
 
   if (isset($_GET['date'])) {
     $form['table'] = array(

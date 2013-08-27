@@ -1,5 +1,8 @@
 <?php
 
+// Формат времени для popup.
+define('REPORTS_DATE_FORMAT', 'Y-m-d');
+
 /**
  * @return mixed
  */
@@ -83,7 +86,7 @@ function reports_drivers_permission() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Функция подготавливает массив $data для дальнейшей оьработки и просмотра/выгрузки.
+ * Функция подготавливает массив $data для дальнейшей обработки и просмотра/выгрузки.
  * @param $doc_id
  * @param $start_date
  * @param $end_date
@@ -118,7 +121,7 @@ function reports_drivers_stat_data($doc_id, $start_date, $end_date) {
  */
 function reports_drivers_personal_data($user, $start_date, $end_date) {
 
-  $data = reports_drivers_docs($user, $start_date, $end_date);
+  $data = reports_drivers_user_docs($user, $start_date, $end_date);
 
   if ($data) {
     foreach ($data as $key => $item) {
@@ -156,8 +159,16 @@ function reports_drivers_daily_data($date) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Превью данных
+// Превью данных в html-таблице
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * @param $caption
+ * @param $headers
+ * @param $doc_id
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_drivers_stat_preview($caption, $headers, $doc_id, $start_date, $end_date) {
   foreach ($headers as $key => $header) {
     $headers[$key] = array(
@@ -213,6 +224,14 @@ function reports_drivers_stat_preview($caption, $headers, $doc_id, $start_date, 
 
 }
 
+/**
+ * @param $caption
+ * @param $headers
+ * @param $user
+ * @param $start_date
+ * @param $end_date
+ * @return string
+ */
 function reports_drivers_personal_preview($caption, $headers, $user, $start_date, $end_date) {
   foreach ($headers as $key => $header) {
     $headers[$key] = array(
@@ -266,6 +285,12 @@ function reports_drivers_personal_preview($caption, $headers, $user, $start_date
   }
 }
 
+/**
+ * @param $caption
+ * @param $headers
+ * @param $date
+ * @return string
+ */
 function reports_drivers_daily_preview($caption, $headers, $date) {
   foreach ($headers as $key => $header) {
     $headers[$key] = array(
@@ -316,80 +341,12 @@ function reports_drivers_daily_preview($caption, $headers, $date) {
   }
 }
 
-
-/**
- * @param $data
- *
- * @return string
- */
-function reports_drivers_daily_table($data) {
-  //Дальше создаем таблицу и выводим полученные данные
-  // Создаем   заголовок таблицы
-
-  // Создаем заголовки столбцов
-  $header = array(
-    array(
-      'data' => t('№'),
-    ),
-    array(
-      'data' => t('ФИО'),
-    ),
-    array(
-      'data' => t('Название документа'),
-    ),
-    array(
-      'data' => t('Дата подписки'),
-    ),
-    array(
-      'data' => t('Дата сдачи'),
-    ),
-  );
-
-  foreach ($data as $key => $item) {
-    $rows[] = array(
-      array(
-        'data' => $key + 1,
-      ),
-      array(
-        'data' => $item->user_name,
-      ),
-      array(
-        'data' => $item->doc_name,
-      ),
-      array(
-        'data' => date('d.m.Y', $item->signup_time),
-      ),
-      array(
-        'data' => ($item->quiz_passed) ? date('d.m.Y', $item->quiz_passed) : 'Не сдан',
-      ),
-    );
-  }
-
-  $excel = reports_drivers_export_xlsx($header, $rows, 'blank_3.xlsx');
-  $output = '<a class="download-excel" href=' . $excel . '>Скачать в Excel</a>';
-
-  $output .= theme(
-    'table', array(
-                  // Шапка таблицы
-                  'header'     => $header,
-                  // Тело таблицы
-                  'rows'       => $rows,
-                  // Заголовок таблицы
-                  'caption'    => $caption,
-                  // Атрибуты таблицы
-                  'attributes' => array('width' => '100%', 'class' => array('reports')),
-             )
-  );
-
-  return $output;
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Вспомогательные функции
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Возвращает список Направлений
  * @return mixed
  */
 function reports_drivers_directions() {
@@ -407,15 +364,19 @@ function reports_drivers_directions() {
 }
 
 /**
+ * Возвращает список документов для указанного направления.
+ * @param $id
  * @return mixed
  */
 function reports_drivers_direction_docs($id) {
   $query = db_select('field_data_field_direction', 'fdr');
   $query->join('field_data_field_date', 'fd', 'fdr.entity_id = fd.field_date_target_id');
-  $query->join('node', 'n', 'fd.entity_id = n.nid');
+  $query->join('node', 'n', 'n.nid = fdr.entity_id');
+  $query->join('node', 'n2', 'fd.entity_id = n2.nid');
   $query->condition('fdr.field_direction_target_id', $id);
   $query->condition('n.status', 1);
-  $query->fields('n');
+  $query->condition('n2.status', 1);
+  $query->fields('n2');
   $result = $query->execute()->fetchAll();
 
   foreach ($result as $item) {
@@ -426,7 +387,7 @@ function reports_drivers_direction_docs($id) {
 }
 
 /**
- * Результаты для конкретного документа.
+ * Возвращает результаты для конкретного документа за указанный период времени.
  * @param $doc_id
  * @param $start_date
  * @param $end_date
@@ -444,7 +405,6 @@ function reports_drivers_current_doc($doc_id, $start_date, $end_date) {
   $db_and->condition('f.fid', $flag_signup->fid);
   $db_and->condition('f.timestamp', array($start_date, $end_date), 'BETWEEN');
   $query->condition($db_and);
-  //$query->distinct();
   $query->addField('n', 'title', 'doc_name');
   $query->addField('n', 'nid', 'doc_id');
   $query->addField('n', 'created', 'doc_created');
@@ -457,14 +417,14 @@ function reports_drivers_current_doc($doc_id, $start_date, $end_date) {
 }
 
 /**
- * Получаем документы, на которые подписан пользователь за указанный период
+ * Возвращает список документов, на которые подписан пользователь за указанный период.
  * @param $user
  * @param $start_date
  * @param $end_date
  *
  * @return mixed
  */
-function reports_drivers_docs($user, $start_date, $end_date) {
+function reports_drivers_user_docs($user, $start_date, $end_date) {
   $flag_signup = flag_get_flag('signup');
 
   $query = db_select('field_data_field_user_full_name', 'ufn');
@@ -488,12 +448,12 @@ function reports_drivers_docs($user, $start_date, $end_date) {
 
 
 /**
- * Получаем данные за указанную дату.
+ * Возращает результаты за указанный период времени
+ * @param $date
  * @return mixed
  */
 function reports_drivers_daily($date) {
   $interval = array($date, $date + 86400);
-  //$end_date = $date + 86400;
   $flag_signup = flag_get_flag('signup');
 
   $query = db_select('flag_content', 'f');
@@ -513,7 +473,7 @@ function reports_drivers_daily($date) {
 }
 
 /**
- * Получаем результаты теста для указанного документа
+ * Возвращает результаты теста указанного документа и пользователя.
  * @param $id
  * @param $uid
  *
@@ -551,7 +511,8 @@ function reports_drivers_quiz_result($id, $uid) {
 }
 
 /**
- * Количество просроченных дней
+ * Возвращает количество просроченных дней. Т.к. в drupal нет данных о времени публикации, используем время создания
+ * документа.
  * @param      $doc_created
  * @param null $quiz_passed
  *
@@ -572,7 +533,7 @@ function reports_drivers_overdue($doc_created, $quiz_passed = NULL) {
 }
 
 /**
- * Автокомплит для поиска машинистов
+ * Автокомплит для поиска машинистов. Возвращает список машинистов.
  * @param $string
  */
 function reports_drivers_autocomplete($string) {
@@ -639,6 +600,10 @@ function reports_drivers_stat_export($form, $form_state) {
   }
 }
 
+/**
+ * @param $form
+ * @param $form_state
+ */
 function reports_drivers_personal_export($form, $form_state) {
   $caption = $form_state['values']['caption'];
   $headers = $form_state['values']['headers'];
@@ -657,6 +622,37 @@ function reports_drivers_personal_export($form, $form_state) {
         ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
         $row->quiz_count,
         round($row->overdue / 86400),
+      );
+    }
+
+    $message = reports_drivers_export_xls($caption, $headers, $rows);
+
+    drupal_set_message($message, 'status');
+  }
+  else {
+    drupal_set_message('Нет результатов для выгрузки', 'error');
+  }
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function reports_drivers_daily_export($form, $form_state) {
+  $caption = $form_state['values']['caption'];
+  $headers = $form_state['values']['headers'];
+  $date = strtotime($form_state['values']['date']);
+
+  $data = reports_drivers_daily_data($date);
+
+  if ($data) {
+    foreach ($data as $key => $row) {
+      $rows[$key] = array(
+        $key + 1,
+        $row->user_name,
+        $row->doc_name,
+        date('d.m.Y', $row->signup_time),
+        ($row->quiz_passed) ? date('d.m.Y', $row->quiz_passed) : 'Не сдан',
       );
     }
 
