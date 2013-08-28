@@ -1,7 +1,7 @@
 <?php
 
 // Формат времени для popup.
-define('REPORTS_DATE_FORMAT', 'd.m.Y');
+define('REPORTS_DATE_FORMAT', 'Y-m-d');
 
 /**
  * @return mixed
@@ -531,7 +531,9 @@ function reports_drivers_overdue($doc_created, $quiz_passed = NULL) {
     return $overdue;
   }
   else {
-    return (time() - $doc_created - $limit);
+    $overdue = (time() - $doc_created - $limit);
+    $overdue = ($overdue > 0) ? $overdue : 0;
+    return $overdue;
   }
 }
 
