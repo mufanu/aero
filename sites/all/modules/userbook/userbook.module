@@ -454,7 +454,7 @@ function userbook_search_result($form, $form_state) {
 			$query->join('field_data_field_user_phone', 'uph', 'm.etid = uph.entity_id');
 		}
 		if (!empty($mobile)) {
-			$query->join('field_data_field_user_mobile', 'uph', 'm.etid = um.entity_id');
+			$query->join('field_data_field_user_mobile', 'um', 'm.etid = um.entity_id');
 		}
 		if (!empty($mail)) {
 			$query->join('users', 'u', 'm.etid = u.uid');
@@ -484,6 +484,7 @@ function userbook_search_result($form, $form_state) {
 		$query->condition($db_and);
 		$query->fields('o', array('etid'));
 		$query->fields('m', array('etid'));
+        //$query->fields('um', array('entity_id'));
 		$results = $query->execute()->fetchAll();
 			
 		foreach ($results as $key => $item) {
