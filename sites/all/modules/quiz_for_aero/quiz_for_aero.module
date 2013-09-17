@@ -143,7 +143,7 @@ function quiz_for_aero_quiz_type_doc($variables) {
     if ($score['passing']) {
       $passing = 'тест сдан';
       $lesson = node_load($lid);
-      dpm($lesson);
+      //dpm($lesson);
       $course = $lesson->field_date['und'][0]['target_id'];
       $link = l("Вернуться к документам", '/node/' . $course);
       // если не сдан

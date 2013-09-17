@@ -345,6 +345,7 @@ function training_get_lessons($id) {
 	
 	// Для каждого урока
 	foreach ($results as $key => $result) {
+      dpm($result);
 		// Получеам id теста из БД
 		$quiz_nid = db_select('field_data_field_lesson', 'f')
 		->condition('f.field_lesson_target_id', $result->nid)
@@ -492,6 +493,9 @@ function training_get_lessons2($nid) {
             ->execute()
             ->fetchAll();
         $test_time_end = 0;
+
+        $quiz_count = count($quiz_results);
+
         foreach ($quiz_results as $item) {
           $test_vid = $item->vid;
           $test_time_end = $item->time_end;
@@ -501,12 +505,15 @@ function training_get_lessons2($nid) {
         $is_passed_quiz = quiz_is_passed($uid, $quiz_nid, $test_vid);
         if (($is_passed_quiz) && ($test_is_eval)) {
           $quiz = 'Тест пройден<br />' . date(DATE_FORMAT, $test_time_end);
-        } else {
+        }
+        else {
           // Проверен ли тест
           if (!$test_is_eval) {
             $quiz = 'Тест не оценен';
           } elseif ($quiz_nid) {
             $quiz = l('Пройти тест', 'node/' . $quiz_nid);
+          } elseif (($quiz_count % 3) == 0) {
+            flag('unflag', 'learned', $result->nid);
           } else {
             $quiz = 'Тест отсутствует';
           }
